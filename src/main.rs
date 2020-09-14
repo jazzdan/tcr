@@ -3,6 +3,8 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::Command;
 
+mod orchestrator;
+
 // TODO(dmiller): handle ignoring files
 // TODO(dmiller): run build maybe
 // TODO(dmiller): run test maybe
@@ -24,6 +26,8 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     let mut watcher: RecommendedWatcher = Watcher::new_immediate(move |res| tx.send(res).unwrap())?;
 
     watcher.watch(path, RecursiveMode::Recursive)?;
+
+    let orc = orchestrator::TestOrchestrator {};
 
     for res in rx {
         match res {
@@ -64,3 +68,8 @@ fn main() {
         println!("error: {:?}", e)
     }
 }
+
+// build.sh
+// build.bash
+// build.py
+// tcr --build build.sh
