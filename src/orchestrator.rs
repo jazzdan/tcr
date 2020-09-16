@@ -6,7 +6,7 @@ pub trait Orchestrator: Sized {
 }
 
 pub struct TestOrchestrator {
-    // build: dyn runner::Runner,
+    build: runner::Runner,
 }
 
 impl Orchestrator for TestOrchestrator {
