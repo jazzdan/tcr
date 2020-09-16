@@ -8,3 +8,6 @@ edition = "2018"
 
 [dependencies]
 notify = "5.0.0-pre.2"
+
+[dev-dependencies]
+mockall = "0.8.1"
