@@ -1,5 +1,5 @@
-mod runner {
-    pub trait Runner {
-        fn run(&self) -> Result<std::process::Output>
-    }
+use std::io::{self};
+
+pub trait Runner: Sized {
+    fn run(&self) -> io::Result<std::process::Output>;
 }

@@ -4,19 +4,23 @@ use std::path::Path;
 use std::process::Command;
 
 mod orchestrator;
+mod runner;
+
+use runner::Runner;
 
 // TODO(dmiller): handle ignoring files
 // TODO(dmiller): run build maybe
 // TODO(dmiller): run test maybe
 // TODO(dmiller): run commit maybe
 // TODO(dmiller): otherwise revert
-fn handle_change_file() {
-    let result = Command::new("ls")
-        .output()
-        .expect("ls command failed to start");
+struct CmdRunner<'a> {
+    cmd: &'a String,
+}
 
-    io::stdout().write_all(&result.stdout).unwrap();
-    io::stderr().write_all(&result.stderr).unwrap();
+impl runner::Runner for CmdRunner<'_> {
+    fn run(&self) -> io::Result<std::process::Output> {
+        return Command::new(self.cmd).output();
+    }
 }
 
 fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
@@ -27,13 +31,16 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
 
     watcher.watch(path, RecursiveMode::Recursive)?;
 
-    let orc = orchestrator::TestOrchestrator {};
-
     for res in rx {
         match res {
             Ok(event) => {
                 println!("changed: {:?}", event);
-                handle_change_file();
+                let c = CmdRunner {
+                    cmd: &String::from("ls"),
+                };
+                let result = c.run().expect("ls command failed to start");
+                io::stdout().write_all(&result.stdout).unwrap();
+                io::stderr().write_all(&result.stderr).unwrap();
             }
             Err(e) => println!("watch error: {:?}", e),
         }
@@ -63,7 +70,10 @@ fn get_path() -> io::Result<std::path::PathBuf> {
 fn main() {
     let path = get_path().expect("Unable to get path");
 
-    println!("watching {}", path.to_str().expect("unable to convert path to string"));
+    println!(
+        "watching {}",
+        path.to_str().expect("unable to convert path to string")
+    );
     if let Err(e) = watch(path) {
         println!("error: {:?}", e)
     }
