@@ -13,8 +13,17 @@ pub struct Orchestrator<'a> {
 }
 
 impl Orchestrator<'_> {
-    pub fn handle_event(&self, event: notify::Event) {
-        println!("{:?}", event);
+    // TODO(dmiller): in the future this should take a notify event, or a list of changed paths or something
+    pub fn handle_event(&self) {
+        let build_res = self.build.run();
+        match build_res {
+            Ok(_) => {
+                println!("Build succeeded");
+            }
+            Err(e) => {
+                println!("ERROR: {:?}", e);
+            }
+        }
     }
 }
 
@@ -28,9 +37,53 @@ mod tests {
     }
 
     #[test]
-    fn mytest() {
+    fn test_mock_runner() {
         let mut mock = MockRunner::default();
-        mock.expect_run().returning(|| std::process::Command::new("true").output());
+        mock.expect_run()
+            .returning(|| std::process::Command::new("true").output());
         mock.run().expect("not to fail");
+    }
+
+    fn fail() -> MockRunner {
+        let mut fail = MockRunner::default();
+        fail.expect_run()
+            .times(1)
+            .returning(|| std::process::Command::new("false").output());
+
+        return fail;
+    }
+
+    fn not_called() -> MockRunner {
+        let mut fail = MockRunner::default();
+        fail.expect_run().never();
+
+        return fail;
+    }
+
+    fn succeed() -> MockRunner {
+        let mut fail = MockRunner::default();
+        fail.expect_run()
+            .times(1)
+            .returning(|| std::process::Command::new("true").output());
+
+        return fail;
+    }
+
+    #[test]
+    fn test_orchestrator_build_fails() {
+        let build = fail();
+
+        let test = not_called();
+        let commit = not_called();
+        let revert = not_called();
+
+        let orc = Orchestrator {
+            build: &build,
+            test: &test,
+            commit: &commit,
+            revert: &revert,
+        };
+
+        orc.handle_event();
     }
 }
