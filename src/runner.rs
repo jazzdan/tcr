@@ -1,5 +1,5 @@
 use std::io::{self};
 
-pub trait Runner: Sized {
+pub trait Runner {
     fn run(&self) -> io::Result<std::process::Output>;
 }

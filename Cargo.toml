@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 notify = "5.0.0-pre.2"
+# TODO(dmiller) Seems to me like this should be a dev dep but if I do that it doesn't compile.
+mockall = "0.8.1"

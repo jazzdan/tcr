@@ -4,9 +4,8 @@ use std::path::Path;
 use std::process::Command;
 
 mod orchestrator;
-mod runner;
 
-use runner::Runner;
+use orchestrator::Runner;
 
 // TODO(dmiller): handle ignoring files
 // TODO(dmiller): run build maybe
@@ -17,7 +16,7 @@ struct CmdRunner<'a> {
     cmd: &'a String,
 }
 
-impl runner::Runner for CmdRunner<'_> {
+impl orchestrator::Runner for CmdRunner<'_> {
     fn run(&self) -> io::Result<std::process::Output> {
         return Command::new(self.cmd).output();
     }
