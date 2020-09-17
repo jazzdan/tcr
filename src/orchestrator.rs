@@ -14,15 +14,28 @@ pub struct Orchestrator<'a> {
 
 impl Orchestrator<'_> {
     // TODO(dmiller): in the future this should take a notify event, or a list of changed paths or something
+    // TODO(dmiller): this thing should probably return a result
     pub fn handle_event(&self) {
         let build_res = self.build.run();
         match build_res {
-            Ok(_) => {
-                println!("Build succeeded");
+            Ok(res) => {
+                if !res.status.success() {
+                    println!("Build failed with non-zero exit code");
+                    self.revert();
+                }
             }
             Err(e) => {
-                println!("ERROR: {:?}", e);
+                println!("Build failed: {:?}", e);
+                self.revert(); 
             }
+        }
+    }
+
+    fn revert(&self) {
+        let revert_res = self.revert.run();
+        match revert_res {
+            Ok(_) => (),
+            Err(e) => println!("Error reverting: {:?}", e),
         }
     }
 }
@@ -61,12 +74,17 @@ mod tests {
     }
 
     fn succeed() -> MockRunner {
-        let mut fail = MockRunner::default();
-        fail.expect_run()
+        let mut success = MockRunner::default();
+        success
+            .expect_run()
             .times(1)
             .returning(|| std::process::Command::new("true").output());
 
-        return fail;
+        return success;
+    }
+
+    fn called() -> MockRunner {
+        return succeed();
     }
 
     #[test]
@@ -75,7 +93,25 @@ mod tests {
 
         let test = not_called();
         let commit = not_called();
-        let revert = not_called();
+        let revert = called();
+
+        let orc = Orchestrator {
+            build: &build,
+            test: &test,
+            commit: &commit,
+            revert: &revert,
+        };
+
+        orc.handle_event();
+    }
+
+    #[test]
+    fn test_orchestrator_build_succeeds_test_fails() {
+        let build = succeed();
+        let test = fail();
+
+        let commit = not_called();
+        let revert = called();
 
         let orc = Orchestrator {
             build: &build,
