@@ -1,4 +1,5 @@
 use std::io::{self};
+use std::io::{Error, ErrorKind};
 
 #[mockall::automock]
 pub trait Runner {
@@ -12,16 +13,85 @@ pub struct Orchestrator<'a> {
     revert: &'a dyn Runner,
 }
 
-impl Orchestrator<'_> {
-    // TODO(dmiller): in the future this should take a notify event, or a list of changed paths or something
-    pub fn handle_event(&self) {
-        let build_res = self.build.run();
-        match build_res {
-            Ok(_) => {
-                println!("Build succeeded");
+fn cmd_failed(
+    output: std::result::Result<std::process::Output, std::io::Error>,
+) -> Option<std::io::Error> {
+    match output {
+        Ok(res) => {
+            if !res.status.success() {
+                return Some(Error::new(
+                    ErrorKind::Other,
+                    "cmd returned non-zero exit code",
+                ));
             }
+            return None;
+        }
+        Err(e) => {
+            return Some(e);
+        }
+    }
+}
+
+impl Orchestrator<'_> {
+    pub fn new<'a>(
+        build: &'a dyn Runner,
+        test: &'a dyn Runner,
+        commit: &'a dyn Runner,
+        revert: &'a dyn Runner,
+    ) -> Orchestrator<'a> {
+        return Orchestrator {
+            build: build,
+            test: test,
+            commit: commit,
+            revert: revert,
+        };
+    }
+    // TODO(dmiller): in the future this should take a notify event, or a list of changed paths or something
+    pub fn handle_event(&self) -> std::result::Result<(), std::io::Error> {
+        let build = self.build.run();
+        match cmd_failed(build) {
+            Some(err) => {
+                println!("Build failed: {:?}", err);
+                let res = self.run_revert();
+                if res.is_err() {
+                    let err = res.err();
+                    return Err(err.unwrap());
+                }
+                return Ok(());
+            }
+            None => {}
+        }
+        let test = self.test.run();
+        match cmd_failed(test) {
+            Some(err) => {
+                println!("Test failed: {:?}", err);
+                let res = self.run_revert();
+                if res.is_err() {
+                    let err = res.err();
+                    return Err(err.unwrap());
+                }
+                return Ok(());
+            }
+            None => {}
+        }
+
+        let commit = self.commit.run();
+        match commit {
+            Ok(_res) => {}
             Err(e) => {
-                println!("ERROR: {:?}", e);
+                return Err(e);
+            }
+        }
+        return Ok(());
+    }
+
+    fn run_revert(&self) -> io::Result<std::process::Output> {
+        let revert_res = self.revert.run();
+        match revert_res {
+            Ok(out) => Ok(out),
+            Err(e) => {
+                println!("Error reverting: {:?}", e);
+                Err(e)
             }
         }
     }
@@ -61,12 +131,17 @@ mod tests {
     }
 
     fn succeed() -> MockRunner {
-        let mut fail = MockRunner::default();
-        fail.expect_run()
+        let mut success = MockRunner::default();
+        success
+            .expect_run()
             .times(1)
             .returning(|| std::process::Command::new("true").output());
 
-        return fail;
+        return success;
+    }
+
+    fn called() -> MockRunner {
+        return succeed();
     }
 
     #[test]
@@ -75,7 +150,25 @@ mod tests {
 
         let test = not_called();
         let commit = not_called();
-        let revert = not_called();
+        let revert = called();
+
+        let orc = Orchestrator {
+            build: &build,
+            test: &test,
+            commit: &commit,
+            revert: &revert,
+        };
+
+        orc.handle_event().expect("This shouldn't error");
+    }
+
+    #[test]
+    fn test_orchestrator_build_succeeds_test_fails() {
+        let build = succeed();
+        let test = fail();
+
+        let commit = not_called();
+        let revert = called();
 
         let orc = Orchestrator {
             build: &build,

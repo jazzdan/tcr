@@ -30,16 +30,32 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
 
     watcher.watch(path, RecursiveMode::Recursive)?;
 
+    let builder = CmdRunner {
+        cmd: &String::from("cargo build"),
+    };
+    let committer = CmdRunner {
+        cmd: &String::from("git commit -am 'working'"),
+    };
+    let tester = CmdRunner {
+        cmd: &String::from("cargo test"),
+    };
+    let reverter = CmdRunner {
+        cmd: &String::from("git reset HEAD --hard"),
+    };
+
+    let orc = orchestrator::Orchestrator::new(&builder, &committer, &tester, &reverter);
+
     for res in rx {
         match res {
             Ok(event) => {
                 println!("changed: {:?}", event);
-                let c = CmdRunner {
-                    cmd: &String::from("ls"),
-                };
-                let result = c.run().expect("ls command failed to start");
-                io::stdout().write_all(&result.stdout).unwrap();
-                io::stderr().write_all(&result.stderr).unwrap();
+                let result = orc.handle_event();
+                match result {
+                    Ok(_) => {},
+                    Err(err) => {
+                        println!("Error: {:?}", err);
+                    }
+                }
             }
             Err(e) => println!("watch error: {:?}", e),
         }
