@@ -38,7 +38,12 @@ impl Orchestrator<'_> {
         let build = self.build.run();
         match cmd_failed(build) {
             Some(err) => {
-                self.run_revert();
+                println!("Build failed: {:?}", err);
+                let res = self.run_revert();
+                if res.is_err() {
+                    let err = res.err();
+                    return Err(err.unwrap());
+                }
                 return Ok(());
             }
             None => {}
@@ -46,13 +51,24 @@ impl Orchestrator<'_> {
         let test = self.test.run();
         match cmd_failed(test) {
             Some(err) => {
-                self.run_revert();
+                println!("Test failed: {:?}", err);
+                let res = self.run_revert();
+                if res.is_err() {
+                    let err = res.err();
+                    return Err(err.unwrap());
+                }
                 return Ok(());
             }
             None => {}
         }
 
         let commit = self.commit.run();
+        match commit {
+            Ok(_res) => {},
+            Err(e) => {
+                return Err(e);
+            }
+        }
         return Ok(());
     }
 
