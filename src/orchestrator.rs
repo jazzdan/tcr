@@ -33,6 +33,19 @@ fn cmd_failed(
 }
 
 impl Orchestrator<'_> {
+    pub fn new<'a>(
+        build: &'a dyn Runner,
+        test: &'a dyn Runner,
+        commit: &'a dyn Runner,
+        revert: &'a dyn Runner,
+    ) -> Orchestrator<'a> {
+        return Orchestrator {
+            build: build,
+            test: test,
+            commit: commit,
+            revert: revert,
+        };
+    }
     // TODO(dmiller): in the future this should take a notify event, or a list of changed paths or something
     pub fn handle_event(&self) -> std::result::Result<(), std::io::Error> {
         let build = self.build.run();
@@ -64,7 +77,7 @@ impl Orchestrator<'_> {
 
         let commit = self.commit.run();
         match commit {
-            Ok(_res) => {},
+            Ok(_res) => {}
             Err(e) => {
                 return Err(e);
             }
