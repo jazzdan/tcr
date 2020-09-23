@@ -177,6 +177,6 @@ mod tests {
             revert: &revert,
         };
 
-        orc.handle_event().expect("This shouldn't error");
+        orc.handle_event();
     }
 }
