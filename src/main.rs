@@ -51,7 +51,7 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
                 println!("changed: {:?}", event);
                 let result = orc.handle_event();
                 match result {
-                    Ok(_) => {},
+                    Ok(_) => {}
                     Err(err) => {
                         println!("Error: {:?}", err);
                     }
