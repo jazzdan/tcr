@@ -7,11 +7,32 @@ mod orchestrator;
 
 use orchestrator::Runner;
 
-// TODO(dmiller): handle ignoring files
-// TODO(dmiller): run build maybe
-// TODO(dmiller): run test maybe
-// TODO(dmiller): run commit maybe
-// TODO(dmiller): otherwise revert
+// "ls -al" => Command::new("ls").arg("-al");
+fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
+    let mut iter = s.split_ascii_whitespace();
+    println!("{:?}\n", iter);
+   
+    let cmd;
+    let first;
+
+    first = iter.nth(0);
+    match first {
+        Some(c) => {
+            cmd = c;            
+        }
+        None => {
+            // Not a great err msg...
+            return Err("Expected there to be at least one thing in the command");
+        }
+    }
+
+    let base_command = Command::new(cmd);
+    let command = base_command.args(iter);
+
+    return Ok(command);
+}
+
+// TODO(dmiller): this should be a vector of arguments?
 struct CmdRunner<'a> {
     cmd: &'a String,
 }

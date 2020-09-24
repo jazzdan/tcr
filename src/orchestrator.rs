@@ -13,17 +13,21 @@ pub struct Orchestrator<'a> {
     revert: &'a dyn Runner,
 }
 
-fn cmd_failed(
+fn handle_output(
     output: std::result::Result<std::process::Output, std::io::Error>,
 ) -> Option<std::io::Error> {
     match output {
         Ok(res) => {
+            println!("{:?}", std::str::from_utf8(&res.stdout));
+            println!("{:?}", std::str::from_utf8(&res.stderr));
+
             if !res.status.success() {
                 return Some(Error::new(
                     ErrorKind::Other,
                     "cmd returned non-zero exit code",
                 ));
             }
+            // TODO(dmiller): print output
             return None;
         }
         Err(e) => {
@@ -49,7 +53,7 @@ impl Orchestrator<'_> {
     // TODO(dmiller): in the future this should take a notify event, or a list of changed paths or something
     pub fn handle_event(&self) -> std::result::Result<(), std::io::Error> {
         let build = self.build.run();
-        match cmd_failed(build) {
+        match handle_output(build) {
             Some(err) => {
                 println!("Build failed: {:?}", err);
                 let res = self.run_revert();
@@ -62,7 +66,7 @@ impl Orchestrator<'_> {
             None => {}
         }
         let test = self.test.run();
-        match cmd_failed(test) {
+        match handle_output(test) {
             Some(err) => {
                 println!("Test failed: {:?}", err);
                 let res = self.run_revert();
