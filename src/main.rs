@@ -11,14 +11,14 @@ use orchestrator::Runner;
 fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
     let mut iter = s.split_ascii_whitespace();
     println!("{:?}\n", iter);
-   
+
     let cmd;
     let first;
 
     first = iter.nth(0);
     match first {
         Some(c) => {
-            cmd = c;            
+            cmd = c;
         }
         None => {
             // Not a great err msg...
@@ -26,8 +26,8 @@ fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
         }
     }
 
-    let base_command = Command::new(cmd);
-    let command = base_command.args(iter);
+    let mut command = Command::new(cmd);
+    command.args(iter);
 
     return Ok(command);
 }
