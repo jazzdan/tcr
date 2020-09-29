@@ -8,14 +8,13 @@ mod orchestrator;
 // "ls -al" => Command::new("ls").arg("-al");
 fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
     let mut iter = s.split_ascii_whitespace();
-   
     let cmd;
     let first;
 
     first = iter.nth(0);
     match first {
         Some(c) => {
-            cmd = c;            
+            cmd = c;
         }
         None => {
             // Not a great err msg...
@@ -48,16 +47,16 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
 
     watcher.watch(path, RecursiveMode::Recursive)?;
 
-    let builder = &mut CmdRunner{
-        cmd: cmd_from_string(String::from("cargo build")).unwrap()
+    let builder = &mut CmdRunner {
+        cmd: cmd_from_string(String::from("cargo build")).unwrap(),
     };
-    let committer = &mut CmdRunner{
+    let committer = &mut CmdRunner {
         cmd: cmd_from_string(String::from("git commit -am 'working'")).unwrap(),
     };
-    let tester = &mut CmdRunner{
+    let tester = &mut CmdRunner {
         cmd: cmd_from_string(String::from("cargo test")).unwrap(),
     };
-    let reverter = &mut CmdRunner{
+    let reverter = &mut CmdRunner {
         cmd: cmd_from_string(String::from("git reset HEAD --hard")).unwrap(),
     };
 

@@ -181,6 +181,6 @@ mod tests {
             revert: &mut revert,
         };
 
-        orc.handle_event();
+        orc.handle_event().expect("This shouldn't error");
     }
 }
