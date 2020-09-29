@@ -1,6 +1,10 @@
 use std::io::{self};
 use std::io::{Error, ErrorKind};
 
+pub struct FileChangeEvent {
+    pub paths: std::vec::Vec<std::path::PathBuf>,
+}
+
 #[mockall::automock]
 pub trait Runner {
     fn run(&mut self) -> io::Result<std::process::Output>;
@@ -51,7 +55,10 @@ impl Orchestrator<'_> {
         };
     }
     // TODO(dmiller): in the future this should take a notify event, or a list of changed paths or something
-    pub fn handle_event(&mut self) -> std::result::Result<(), std::io::Error> {
+    pub fn handle_event(
+        &mut self,
+        event: FileChangeEvent,
+    ) -> std::result::Result<(), std::io::Error> {
         let build = self.build.run();
         match handle_output(build) {
             Some(err) => {
@@ -104,6 +111,12 @@ impl Orchestrator<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn ok_event() -> FileChangeEvent {
+        return FileChangeEvent {
+            paths: vec![std::path::PathBuf::from(r"/tmp/hi")],
+        };
+    }
 
     #[test]
     fn test_mock_runner() {
@@ -158,7 +171,7 @@ mod tests {
             revert: &mut revert,
         };
 
-        orc.handle_event().expect("This shouldn't error");
+        orc.handle_event(ok_event()).expect("This shouldn't error");
     }
 
     #[test]
@@ -176,6 +189,6 @@ mod tests {
             revert: &mut revert,
         };
 
-        orc.handle_event().expect("This shouldn't error");
+        orc.handle_event(ok_event()).expect("This shouldn't error");
     }
 }

@@ -66,7 +66,8 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
         match res {
             Ok(event) => {
                 println!("changed: {:?}", event);
-                let result = orc.handle_event();
+                let paths = event.paths;
+                let result = orc.handle_event(orchestrator::FileChangeEvent{paths: paths});
                 match result {
                     Ok(_) => {}
                     Err(err) => {
