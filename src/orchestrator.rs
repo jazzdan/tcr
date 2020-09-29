@@ -11,6 +11,7 @@ pub trait Runner {
 }
 
 pub struct Orchestrator<'a> {
+    root: std::path::PathBuf,
     build: &'a mut dyn Runner,
     test: &'a mut dyn Runner,
     commit: &'a mut dyn Runner,
@@ -47,7 +48,9 @@ impl Orchestrator<'_> {
         commit: &'a mut dyn Runner,
         revert: &'a mut dyn Runner,
     ) -> Orchestrator<'a> {
+        let root = std::env::current_dir().unwrap();
         return Orchestrator {
+            root: root,
             build: build,
             test: test,
             commit: commit,
@@ -59,6 +62,13 @@ impl Orchestrator<'_> {
         &mut self,
         event: FileChangeEvent,
     ) -> std::result::Result<(), std::io::Error> {
+        if event
+            .paths
+            .iter()
+            .all(|p| p.starts_with(self.root.join(".git")))
+        {
+            return Ok(());
+        }
         let build = self.build.run();
         match handle_output(build) {
             Some(err) => {
@@ -112,9 +122,13 @@ impl Orchestrator<'_> {
 mod tests {
     use super::*;
 
+    fn root() -> std::path::PathBuf {
+        return std::path::PathBuf::from(r"/home/stuff");
+    }
+
     fn ok_event() -> FileChangeEvent {
         return FileChangeEvent {
-            paths: vec![std::path::PathBuf::from(r"/tmp/hi")],
+            paths: vec![std::path::PathBuf::from(r"/home/stuff/hi")],
         };
     }
 
@@ -165,6 +179,7 @@ mod tests {
         let mut revert = called();
 
         let mut orc = Orchestrator {
+            root: root(),
             build: &mut build,
             test: &mut test,
             commit: &mut commit,
@@ -183,6 +198,7 @@ mod tests {
         let mut revert = called();
 
         let mut orc = Orchestrator {
+            root: root(),
             build: &mut build,
             test: &mut test,
             commit: &mut commit,
@@ -190,5 +206,27 @@ mod tests {
         };
 
         orc.handle_event(ok_event()).expect("This shouldn't error");
+    }
+
+    #[test]
+    fn ignore_git_directory() {
+        let mut build = not_called();
+        let mut test = not_called();
+        let mut commit = not_called();
+        let mut revert = not_called();
+
+        let mut orc = Orchestrator {
+            root: root(),
+            build: &mut build,
+            test: &mut test,
+            commit: &mut commit,
+            revert: &mut revert,
+        };
+
+        let event = FileChangeEvent {
+            paths: vec![std::path::PathBuf::from(r"/home/stuff/.git")],
+        };
+
+        orc.handle_event(event).expect("This shouldn't error");
     }
 }
