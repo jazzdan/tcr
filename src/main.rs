@@ -111,7 +111,21 @@ fn main() {
     }
 }
 
-// build.sh
-// build.bash
-// build.py
-// tcr --build build.sh
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
+    }
+
+    #[test]
+    fn test_cmd_from_string() {
+        let output = cmd_from_string(String::from("ls -al")).unwrap();
+        // there might be a better way to test this
+        assert_eq!(format!("{:?}", output), "\"ls\" \"-al\"");
+
+        cmd_from_string(String::from("")).expect_err("Expected this to fail");
+    }
+}
