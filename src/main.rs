@@ -1,16 +1,13 @@
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
-use std::io::{self, Write};
+use std::io::{self};
 use std::path::Path;
 use std::process::Command;
 
 mod orchestrator;
 
-use orchestrator::Runner;
-
 // "ls -al" => Command::new("ls").arg("-al");
 fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
     let mut iter = s.split_ascii_whitespace();
-    println!("{:?}\n", iter);
    
     let cmd;
     let first;
@@ -26,20 +23,20 @@ fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
         }
     }
 
-    let base_command = Command::new(cmd);
-    let command = base_command.args(iter);
+    let mut command = Command::new(cmd);
+    command.args(iter);
 
     return Ok(command);
 }
 
 // TODO(dmiller): this should be a vector of arguments?
-struct CmdRunner<'a> {
-    cmd: &'a String,
+struct CmdRunner {
+    cmd: std::process::Command,
 }
 
-impl orchestrator::Runner for CmdRunner<'_> {
-    fn run(&self) -> io::Result<std::process::Output> {
-        return Command::new(self.cmd).output();
+impl orchestrator::Runner for CmdRunner {
+    fn run(&mut self) -> io::Result<std::process::Output> {
+        return self.cmd.output();
     }
 }
 
@@ -51,20 +48,20 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
 
     watcher.watch(path, RecursiveMode::Recursive)?;
 
-    let builder = CmdRunner {
-        cmd: &String::from("cargo build"),
+    let builder = &mut CmdRunner{
+        cmd: cmd_from_string(String::from("cargo build")).unwrap()
     };
-    let committer = CmdRunner {
-        cmd: &String::from("git commit -am 'working'"),
+    let committer = &mut CmdRunner{
+        cmd: cmd_from_string(String::from("git commit -am 'working'")).unwrap(),
     };
-    let tester = CmdRunner {
-        cmd: &String::from("cargo test"),
+    let tester = &mut CmdRunner{
+        cmd: cmd_from_string(String::from("cargo test")).unwrap(),
     };
-    let reverter = CmdRunner {
-        cmd: &String::from("git reset HEAD --hard"),
+    let reverter = &mut CmdRunner{
+        cmd: cmd_from_string(String::from("git reset HEAD --hard")).unwrap(),
     };
 
-    let orc = orchestrator::Orchestrator::new(&builder, &committer, &tester, &reverter);
+    let mut orc = orchestrator::Orchestrator::new(builder, committer, tester, reverter);
 
     for res in rx {
         match res {

@@ -3,14 +3,14 @@ use std::io::{Error, ErrorKind};
 
 #[mockall::automock]
 pub trait Runner {
-    fn run(&self) -> io::Result<std::process::Output>;
+    fn run(&mut self) -> io::Result<std::process::Output>;
 }
 
 pub struct Orchestrator<'a> {
-    build: &'a dyn Runner,
-    test: &'a dyn Runner,
-    commit: &'a dyn Runner,
-    revert: &'a dyn Runner,
+    build: &'a mut dyn Runner,
+    test: &'a mut dyn Runner,
+    commit: &'a mut dyn Runner,
+    revert: &'a mut dyn Runner,
 }
 
 fn handle_output(
@@ -38,10 +38,10 @@ fn handle_output(
 
 impl Orchestrator<'_> {
     pub fn new<'a>(
-        build: &'a dyn Runner,
-        test: &'a dyn Runner,
-        commit: &'a dyn Runner,
-        revert: &'a dyn Runner,
+        build: &'a mut dyn Runner,
+        test: &'a mut dyn Runner,
+        commit: &'a mut dyn Runner,
+        revert: &'a mut dyn Runner,
     ) -> Orchestrator<'a> {
         return Orchestrator {
             build: build,
@@ -51,7 +51,7 @@ impl Orchestrator<'_> {
         };
     }
     // TODO(dmiller): in the future this should take a notify event, or a list of changed paths or something
-    pub fn handle_event(&self) -> std::result::Result<(), std::io::Error> {
+    pub fn handle_event(&mut self) -> std::result::Result<(), std::io::Error> {
         let build = self.build.run();
         match handle_output(build) {
             Some(err) => {
@@ -89,7 +89,7 @@ impl Orchestrator<'_> {
         return Ok(());
     }
 
-    fn run_revert(&self) -> io::Result<std::process::Output> {
+    fn run_revert(&mut self) -> io::Result<std::process::Output> {
         let revert_res = self.revert.run();
         match revert_res {
             Ok(out) => Ok(out),
@@ -150,17 +150,17 @@ mod tests {
 
     #[test]
     fn test_orchestrator_build_fails() {
-        let build = fail();
+        let mut build = fail();
 
-        let test = not_called();
-        let commit = not_called();
-        let revert = called();
+        let mut test = not_called();
+        let mut commit = not_called();
+        let mut revert = called();
 
-        let orc = Orchestrator {
-            build: &build,
-            test: &test,
-            commit: &commit,
-            revert: &revert,
+        let mut orc = Orchestrator {
+            build: &mut build,
+            test: &mut test,
+            commit: &mut commit,
+            revert: &mut revert,
         };
 
         orc.handle_event().expect("This shouldn't error");
@@ -168,17 +168,17 @@ mod tests {
 
     #[test]
     fn test_orchestrator_build_succeeds_test_fails() {
-        let build = succeed();
-        let test = fail();
+        let mut build = succeed();
+        let mut test = fail();
 
-        let commit = not_called();
-        let revert = called();
+        let mut commit = not_called();
+        let mut revert = called();
 
-        let orc = Orchestrator {
-            build: &build,
-            test: &test,
-            commit: &commit,
-            revert: &revert,
+        let mut orc = Orchestrator {
+            build: &mut build,
+            test: &mut test,
+            commit: &mut commit,
+            revert: &mut revert,
         };
 
         orc.handle_event();
