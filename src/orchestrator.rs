@@ -57,7 +57,6 @@ impl Orchestrator<'_> {
             revert: revert,
         };
     }
-    // TODO(dmiller): in the future this should take a notify event, or a list of changed paths or something
     pub fn handle_event(
         &mut self,
         event: FileChangeEvent,
