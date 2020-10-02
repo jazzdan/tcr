@@ -11,8 +11,8 @@ impl Checker<'_> {
         gitignore: Option<gitignore::File<'a>>,
     ) -> Checker<'a> {
         return Checker {
-            root: root,
-            gitignore: gitignore,
+            root,
+            gitignore,
         };
     }
 

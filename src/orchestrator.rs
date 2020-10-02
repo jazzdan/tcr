@@ -1,5 +1,4 @@
-use std::io::{self};
-use std::io::{Error, ErrorKind};
+use std::io::{self, Error, ErrorKind};
 
 pub struct FileChangeEvent {
     pub paths: std::vec::Vec<std::path::PathBuf>,
