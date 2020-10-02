@@ -6,24 +6,27 @@ pub struct Checker<'a> {
 }
 
 impl Checker<'_> {
-    pub fn new<'a>(root: std::path::PathBuf, gitignore: Option<gitignore::File<'a>>) -> Checker<'a> {
-        return Checker{
+    pub fn new<'a>(
+        root: std::path::PathBuf,
+        gitignore: Option<gitignore::File<'a>>,
+    ) -> Checker<'a> {
+        return Checker {
             root: root,
             gitignore: gitignore,
         };
     }
-     
 
     pub fn is_ignored(&mut self, path: std::path::PathBuf) -> bool {
         match &self.gitignore {
             Some(gi) => {
+                // NOTE: this behaves strangely when files don't exist
                 match gi.is_excluded(&path) {
                     Ok(m) => {
                         if m {
                             return true;
                         }
-                    },
-                    Err(_) => {},
+                    }
+                    Err(_) => {}
                 }
             }
             None => {}
@@ -35,9 +38,9 @@ impl Checker<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempdir;
     use std::fs::File;
     use std::io::prelude::*;
+    use tempdir;
 
     #[test]
     fn test_ignore_no_gitignore() {

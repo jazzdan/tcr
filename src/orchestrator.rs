@@ -50,11 +50,11 @@ impl Orchestrator<'_> {
     ) -> Orchestrator<'a> {
         let root = std::env::current_dir().unwrap();
         return Orchestrator {
-            root: root,
-            build: build,
-            test: test,
-            commit: commit,
-            revert: revert,
+            root,
+            build,
+            test,
+            commit,
+            revert,
         };
     }
     pub fn handle_event(
