@@ -1,12 +1,14 @@
 use gitignore;
 
 pub struct Checker<'a> {
+    root: std::path::PathBuf,
     gitignore: Option<gitignore::File<'a>>,
 }
 
 impl Checker<'_> {
     pub fn new<'a>(root: std::path::PathBuf, gitignore: Option<gitignore::File<'a>>) -> Checker<'a> {
         return Checker{
+            root: root,
             gitignore: gitignore,
         };
     }
@@ -34,13 +36,55 @@ impl Checker<'_> {
 mod tests {
     use super::*;
     use tempdir;
+    use std::fs::File;
+    use std::io::prelude::*;
 
     #[test]
     fn test_ignore_no_gitignore() {
-        let tmp_dir = tempdir::TempDir::new("example").unwrap();
+        let tmp_dir = tempdir::TempDir::new("test").unwrap();
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), None);
 
-        let path = std::path::Path::new("foo");
+        let path = tmp_dir.path().join("foo");
         assert_eq!(checker.is_ignored(path.to_path_buf()), false);
+    }
+
+    #[test]
+    fn test_gitignore_no_match() {
+        let tmp_dir = tempdir::TempDir::new("test").unwrap();
+        let gi_path = &tmp_dir.path().join(".gitignore");
+
+        let mut file = File::create(gi_path).unwrap();
+        file.write_all(b"bar").unwrap();
+
+        let gi = gitignore::File::new(gi_path).unwrap();
+
+        let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
+
+        let path = tmp_dir.path().join("foo");
+
+        let mut file = File::create(path.to_owned()).unwrap();
+        file.write_all(b"foo").unwrap();
+
+        assert_eq!(checker.is_ignored(path.to_path_buf()), false);
+    }
+
+    #[test]
+    fn test_gitignore_match() {
+        let tmp_dir = tempdir::TempDir::new("test").unwrap();
+        let gi_path = &tmp_dir.path().join(".gitignore");
+
+        let mut file = File::create(gi_path).unwrap();
+        file.write_all(b"bar").unwrap();
+
+        let gi = gitignore::File::new(gi_path).unwrap();
+
+        let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
+
+        let path = tmp_dir.path().join("bar");
+
+        let mut file = File::create(path.to_owned()).unwrap();
+        file.write_all(b"bar").unwrap();
+
+        assert_eq!(checker.is_ignored(path.to_path_buf()), true);
     }
 }
