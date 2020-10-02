@@ -5,15 +5,12 @@ pub struct Checker<'a> {
 }
 
 impl Checker<'_> {
-    pub fn new<'a>(root: std::path::PathBuf) -> Checker<'a> {
-        let gi = gitignore::File::new(&root.join(".gitignore"));
-        match gi {
-            Err(_) => return Checker { gitignore: None },
-            Ok(g) => { 
-                return Checker { gitignore: Some(g) };
-            },
+    pub fn new<'a>(root: std::path::PathBuf, gitignore: Option<gitignore::File<'a>>) -> Checker<'a> {
+        return Checker{
+            gitignore: gitignore,
         };
     }
+     
 
     pub fn is_ignored(&mut self, path: std::path::PathBuf) -> bool {
         match &self.gitignore {
@@ -41,7 +38,7 @@ mod tests {
     #[test]
     fn test_ignore_no_gitignore() {
         let tmp_dir = tempdir::TempDir::new("example").unwrap();
-        let mut checker = Checker::new(tmp_dir.path().to_path_buf());
+        let mut checker = Checker::new(tmp_dir.path().to_path_buf(), None);
 
         let path = std::path::Path::new("foo");
         assert_eq!(checker.is_ignored(path.to_path_buf()), false);

@@ -43,9 +43,6 @@ impl orchestrator::Runner for CmdRunner {
 fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     let (tx, rx) = std::sync::mpsc::channel();
 
-    let root = std::env::current_dir().unwrap();
-    let _ignore = ignore::Checker::new(root);
-
     // TODO(dmiller): uhh this doesn't actually watch recursively??
     let mut watcher: RecommendedWatcher = Watcher::new_immediate(move |res| tx.send(res).unwrap())?;
 
