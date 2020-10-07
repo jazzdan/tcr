@@ -10,13 +10,13 @@ impl Checker<'_> {
         root: std::path::PathBuf,
         gitignore: Option<gitignore::File<'a>>,
     ) -> Checker<'a> {
-        return Checker {
-            root,
-            gitignore,
-        };
+        return Checker { root, gitignore };
     }
 
     pub fn is_ignored(&mut self, path: std::path::PathBuf) -> bool {
+        if path.starts_with(self.root.join(".git")) {
+            return true;
+        }
         match &self.gitignore {
             Some(gi) => {
                 // NOTE: this behaves strangely when files don't exist
@@ -87,6 +87,27 @@ mod tests {
 
         let mut file = File::create(path.to_owned()).unwrap();
         file.write_all(b"bar").unwrap();
+
+        assert_eq!(checker.is_ignored(path.to_path_buf()), true);
+    }
+
+    #[test]
+    fn test_ignores_git_dir() {
+        let tmp_dir = tempdir::TempDir::new("test").unwrap();
+        let gi_path = &tmp_dir.path().join(".gitignore");
+        let git_dir_path = &tmp_dir.path().join(".git");
+
+        std::fs::create_dir(git_dir_path).unwrap();
+        let mut file = File::create(gi_path).unwrap();
+        file.write_all(b"bar").unwrap();
+
+        let gi = gitignore::File::new(gi_path).unwrap();
+
+        let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
+
+        let path = git_dir_path.join("some_file");
+        let mut file = File::create(path.to_owned()).unwrap();
+        file.write_all(b"foo").unwrap();
 
         assert_eq!(checker.is_ignored(path.to_path_buf()), true);
     }

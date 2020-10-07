@@ -68,13 +68,6 @@ impl Orchestrator<'_> {
         if event
             .paths
             .iter()
-            .all(|p| p.starts_with(self.root.join(".git")))
-        {
-            return Ok(());
-        }
-        if event
-            .paths
-            .iter()
             .all(|p| self.ignore.is_ignored(p.to_path_buf()))
         {
             return Ok(());
