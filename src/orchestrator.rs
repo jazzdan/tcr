@@ -1,5 +1,7 @@
 use std::io::{self, Error, ErrorKind};
 
+use crate::ignore::Checker;
+
 pub struct FileChangeEvent {
     pub paths: std::vec::Vec<std::path::PathBuf>,
 }
@@ -11,6 +13,7 @@ pub trait Runner {
 
 pub struct Orchestrator<'a> {
     root: std::path::PathBuf,
+    ignore: Checker<'a>,
     build: &'a mut dyn Runner,
     test: &'a mut dyn Runner,
     commit: &'a mut dyn Runner,
@@ -42,6 +45,7 @@ fn handle_output(
 
 impl Orchestrator<'_> {
     pub fn new<'a>(
+        ignore: Checker<'a>,
         build: &'a mut dyn Runner,
         test: &'a mut dyn Runner,
         commit: &'a mut dyn Runner,
@@ -50,6 +54,7 @@ impl Orchestrator<'_> {
         let root = std::env::current_dir().unwrap();
         return Orchestrator {
             root,
+            ignore,
             build,
             test,
             commit,
@@ -67,6 +72,14 @@ impl Orchestrator<'_> {
         {
             return Ok(());
         }
+        if event
+            .paths
+            .iter()
+            .all(|p| self.ignore.is_ignored(p.to_path_buf()))
+        {
+            return Ok(());
+        }
+
         let build = self.build.run();
         match handle_output(build) {
             Some(err) => {
@@ -178,6 +191,7 @@ mod tests {
 
         let mut orc = Orchestrator {
             root: root(),
+            ignore: Checker::new(root(), None),
             build: &mut build,
             test: &mut test,
             commit: &mut commit,
@@ -197,6 +211,7 @@ mod tests {
 
         let mut orc = Orchestrator {
             root: root(),
+            ignore: Checker::new(root(), None),
             build: &mut build,
             test: &mut test,
             commit: &mut commit,
@@ -215,6 +230,7 @@ mod tests {
 
         let mut orc = Orchestrator {
             root: root(),
+            ignore: Checker::new(root(), None),
             build: &mut build,
             test: &mut test,
             commit: &mut commit,

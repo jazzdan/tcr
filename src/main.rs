@@ -61,7 +61,10 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
         cmd: cmd_from_string(String::from("git reset HEAD --hard")).unwrap(),
     };
 
-    let mut orc = orchestrator::Orchestrator::new(builder, committer, tester, reverter);
+    let root = std::env::current_dir().unwrap();
+    let checker = ignore::Checker::new(root, None);
+
+    let mut orc = orchestrator::Orchestrator::new(checker, builder, tester, committer, reverter);
 
     for res in rx {
         match res {
