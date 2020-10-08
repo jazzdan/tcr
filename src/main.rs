@@ -1,10 +1,12 @@
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use serde::{Deserialize, Serialize};
+use serde_json;
 use std::io::{self};
 use std::path::Path;
 use std::process::Command;
 
-mod orchestrator;
 mod ignore;
+mod orchestrator;
 
 // "ls -al" => Command::new("ls").arg("-al");
 fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
@@ -72,7 +74,7 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
             Ok(event) => {
                 println!("changed: {:?}", event);
                 let paths = event.paths;
-                let result = orc.handle_event(orchestrator::FileChangeEvent{paths: paths});
+                let result = orc.handle_event(orchestrator::FileChangeEvent { paths: paths });
                 match result {
                     Ok(_) => {}
                     Err(err) => {
@@ -104,9 +106,29 @@ fn get_path() -> io::Result<std::path::PathBuf> {
     }
 }
 
-// TODO(dmiller): this should take a configuration. CLI, convention, toml file?
+#[derive(Serialize, Deserialize, Debug)]
+struct Config {
+    build_cmd: String,
+    test_cmd: String,
+    revert_cmd: String,
+    commit_cmd: String,
+}
+
+// TODO(dmiller): this should take a configuration. CLI, convention, toml/yaml/json file?
 fn main() {
     let path = get_path().expect("Unable to get path");
+
+    let data = r#"
+        {
+            "build_cmd": "cargo build",
+            "test_cmd": "cargo test",
+            "revert_cmd": "git reset HEAD --hard",
+            "commit_cmd": "git commit -am working"
+        }"#;
+
+    let c: Config = serde_json::from_str(data).unwrap();
+    println!("Config: {:?}", c);
+
 
     println!(
         "watching {}",
