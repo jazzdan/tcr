@@ -12,7 +12,6 @@ pub trait Runner {
 }
 
 pub struct Orchestrator<'a> {
-    root: std::path::PathBuf,
     ignore: Checker<'a>,
     build: &'a mut dyn Runner,
     test: &'a mut dyn Runner,
@@ -51,9 +50,7 @@ impl Orchestrator<'_> {
         commit: &'a mut dyn Runner,
         revert: &'a mut dyn Runner,
     ) -> Orchestrator<'a> {
-        let root = std::env::current_dir().unwrap();
         return Orchestrator {
-            root,
             ignore,
             build,
             test,
@@ -183,7 +180,6 @@ mod tests {
         let mut revert = called();
 
         let mut orc = Orchestrator {
-            root: root(),
             ignore: Checker::new(root(), None),
             build: &mut build,
             test: &mut test,
@@ -203,7 +199,6 @@ mod tests {
         let mut revert = called();
 
         let mut orc = Orchestrator {
-            root: root(),
             ignore: Checker::new(root(), None),
             build: &mut build,
             test: &mut test,
@@ -222,7 +217,6 @@ mod tests {
         let mut revert = not_called();
 
         let mut orc = Orchestrator {
-            root: root(),
             ignore: Checker::new(root(), None),
             build: &mut build,
             test: &mut test,
