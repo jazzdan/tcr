@@ -134,8 +134,8 @@ fn main() {
     // TODO make this CLI configurable
     let config = read_config(path.join(".tcr"));
     match config {
-        Ok(_) => {
-            println!("We read the config!");
+        Ok(c) => {
+            println!("We read the config! {:?}", c);
         },
         Err(e) => {
             println!("Error reading config at path {:?}: {:?}.\n TODO help user make config", path, e);
