@@ -89,6 +89,8 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     Ok(())
 }
 
+// TODO
+// find where the config file is, and run from there
 fn get_path() -> io::Result<std::path::PathBuf> {
     match std::env::args().nth(1) {
         Some(p) => {
@@ -114,21 +116,32 @@ struct Config {
     commit_cmd: String,
 }
 
+fn read_config(path: std::path::PathBuf) -> io::Result<Config> {
+    let contents = std::fs::read_to_string(path);
+    match contents {
+        Ok(file_contents) => {
+            let c: Config = serde_json::from_str(file_contents.as_ref()).unwrap();
+            return Ok(c);
+        },
+        Err(e) => return Err(e),
+    }
+}
+
 // TODO(dmiller): this should take a configuration. CLI, convention, toml/yaml/json file?
 fn main() {
     let path = get_path().expect("Unable to get path");
 
-    let data = r#"
-        {
-            "build_cmd": "cargo build",
-            "test_cmd": "cargo test",
-            "revert_cmd": "git reset HEAD --hard",
-            "commit_cmd": "git commit -am working"
-        }"#;
-
-    let c: Config = serde_json::from_str(data).unwrap();
-    println!("Config: {:?}", c);
-
+    // TODO make this CLI configurable
+    let config = read_config(path.join(".tcr"));
+    match config {
+        Ok(_) => {
+            println!("We read the config!");
+        },
+        Err(e) => {
+            println!("Error reading config at path {:?}: {:?}.\n TODO help user make config", path, e);
+            std::process::exit(1);
+        }
+    }
 
     println!(
         "watching {}",
