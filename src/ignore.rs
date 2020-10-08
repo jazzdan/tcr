@@ -5,6 +5,7 @@ pub struct Checker<'a> {
     gitignore: Option<gitignore::File<'a>>,
 }
 
+// TODO this isn't working for the current gitignore file. Files in ./target are triggering changes
 impl Checker<'_> {
     pub fn new<'a>(
         root: std::path::PathBuf,

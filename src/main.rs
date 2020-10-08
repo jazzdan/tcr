@@ -44,6 +44,7 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     let (tx, rx) = std::sync::mpsc::channel();
 
     // TODO(dmiller): uhh this doesn't actually watch recursively??
+    // TODO we need to put some debouncing on this or something
     let mut watcher: RecommendedWatcher = Watcher::new_immediate(move |res| tx.send(res).unwrap())?;
 
     watcher.watch(path, RecursiveMode::Recursive)?;
