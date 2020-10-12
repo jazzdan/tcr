@@ -5,12 +5,13 @@ use serde_json;
 use std::io::{self};
 use std::path::Path;
 use std::process::Command;
+use ::ignore::gitignore::Gitignore as Gitignore;
 
 mod ignore;
 mod orchestrator;
 
 #[derive(Clap)]
-#[clap(version = "0.1", author = "Dan Miller. <dan@dmiller.dev>")]
+#[clap(version = "0.1", author = "Dan Miller <dan@dmiller.dev>")]
 struct Opts {
     #[clap(short, long)]
     config: Option<String>,
@@ -75,8 +76,9 @@ fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> 
 
     let root = std::env::current_dir().unwrap();
     let gitignore_path = root.join(".gitignore").to_path_buf();
-    let gitignore =  gitignore::File::new(&gitignore_path).ok();
-    let checker = ignore::Checker::new(root, gitignore);
+    // TODO should I handle the error here? Weird syntax.
+    let (gitignore, _) =  Gitignore::new(&gitignore_path);
+    let checker = ignore::Checker::new(root, Some(gitignore));
 
     let mut orc = orchestrator::Orchestrator::new(checker, builder, tester, committer, reverter);
 
