@@ -5,7 +5,9 @@ pub struct Checker {
     gitignore: Option<Gitignore>,
 }
 
-// TODO
+// TODO handle if files are editor files
+// emacs **/.#*
+// vim "**/4913", "**/*~", "**/.*.swp", "**/.*.swx", "**/.*.swo", "**/.*.swn"
 fn is_editor_file(path: std::path::PathBuf) -> bool {
     return false;
 }
