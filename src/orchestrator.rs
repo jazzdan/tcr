@@ -12,7 +12,7 @@ pub trait Runner {
 }
 
 pub struct Orchestrator<'a> {
-    ignore: Checker<'a>,
+    ignore: Checker,
     build: &'a mut dyn Runner,
     test: &'a mut dyn Runner,
     commit: &'a mut dyn Runner,
@@ -44,7 +44,7 @@ fn handle_output(
 
 impl Orchestrator<'_> {
     pub fn new<'a>(
-        ignore: Checker<'a>,
+        ignore: Checker,
         build: &'a mut dyn Runner,
         test: &'a mut dyn Runner,
         commit: &'a mut dyn Runner,

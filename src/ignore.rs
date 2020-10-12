@@ -1,9 +1,10 @@
-use gitignore;
+use ignore::gitignore::Gitignore as Gitignore;
 
-pub struct Checker<'a> {
+pub struct Checker {
     root: std::path::PathBuf,
     // TODO maybe replace this with the gitignore module in the ignore crate
-    gitignore: Option<gitignore::File<'a>>,
+    // gitignore: Option<gitignore::File<'a>>,
+    gitignore: Option<Gitignore>,
 }
 
 // TODO
@@ -12,11 +13,11 @@ fn is_editor_file(path: std::path::PathBuf) -> bool {
 }
 
 // TODO this isn't working for the current gitignore file. Files in ./target are triggering changes
-impl Checker<'_> {
-    pub fn new<'a>(
+impl Checker {
+    pub fn new(
         root: std::path::PathBuf,
-        gitignore: Option<gitignore::File<'a>>,
-    ) -> Checker<'a> {
+        gitignore: Option<Gitignore>,
+    ) -> Checker {
         return Checker { root, gitignore };
     }
 
@@ -26,15 +27,9 @@ impl Checker<'_> {
         }
         match &self.gitignore {
             Some(gi) => {
-                // NOTE: this behaves strangely when files don't exist
-                match gi.is_excluded(&path) {
-                    Ok(m) => {
-                        if m {
-                            return true;
-                        }
-                    }
-                    Err(_) => {}
-                }
+                // TODO could we pass through whether the path is a directory from the notify crate?
+                let is_dir = false;
+                return gi.matched(path, is_dir).is_ignore();
             }
             None => {}
         }
@@ -66,7 +61,7 @@ mod tests {
         let mut file = File::create(gi_path).unwrap();
         file.write_all(b"bar").unwrap();
 
-        let gi = gitignore::File::new(gi_path).unwrap();
+        let (gi, _) = Gitignore::new(gi_path);
 
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
 
@@ -86,7 +81,7 @@ mod tests {
         let mut file = File::create(gi_path).unwrap();
         file.write_all(b"bar").unwrap();
 
-        let gi = gitignore::File::new(gi_path).unwrap();
+        let (gi, _) = Gitignore::new(gi_path);
 
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
 
@@ -108,7 +103,7 @@ mod tests {
         let mut file = File::create(gi_path).unwrap();
         file.write_all(b"bar").unwrap();
 
-        let gi = gitignore::File::new(gi_path).unwrap();
+        let (gi, _) = Gitignore::new(gi_path);
 
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
 
@@ -118,4 +113,5 @@ mod tests {
 
         assert_eq!(checker.is_ignored(path.to_path_buf()), true);
     }
+
 }
