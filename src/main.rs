@@ -1,10 +1,22 @@
+use clap::Clap;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use serde::{Deserialize, Serialize};
+use serde_json;
 use std::io::{self};
 use std::path::Path;
 use std::process::Command;
 
-mod orchestrator;
 mod ignore;
+mod orchestrator;
+
+#[derive(Clap)]
+#[clap(version = "0.1", author = "Dan Miller. <dan@dmiller.dev>")]
+struct Opts {
+    #[clap(short, long)]
+    config: Option<String>,
+    #[clap(short, long)]
+    root: Option<String>,
+}
 
 // "ls -al" => Command::new("ls").arg("-al");
 fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
@@ -19,7 +31,7 @@ fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
         }
         None => {
             // Not a great err msg...
-            return Err("Expected there to be at least one thing in the command");
+            return Err("Expected cmd to not be empty");
         }
     }
 
@@ -29,7 +41,6 @@ fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
     return Ok(command);
 }
 
-// TODO(dmiller): this should be a vector of arguments?
 struct CmdRunner {
     cmd: std::process::Command,
 }
@@ -40,7 +51,7 @@ impl orchestrator::Runner for CmdRunner {
     }
 }
 
-fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
+fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> {
     let (tx, rx) = std::sync::mpsc::channel();
 
     // TODO(dmiller): uhh this doesn't actually watch recursively??
@@ -50,16 +61,16 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     watcher.watch(path, RecursiveMode::Recursive)?;
 
     let builder = &mut CmdRunner {
-        cmd: cmd_from_string(String::from("cargo build")).unwrap(),
+        cmd: cmd_from_string(config.build_cmd).unwrap(),
     };
     let committer = &mut CmdRunner {
-        cmd: cmd_from_string(String::from("git commit -am 'working'")).unwrap(),
+        cmd: cmd_from_string(config.commit_cmd).unwrap(),
     };
     let tester = &mut CmdRunner {
-        cmd: cmd_from_string(String::from("cargo test")).unwrap(),
+        cmd: cmd_from_string(config.revert_cmd).unwrap(),
     };
     let reverter = &mut CmdRunner {
-        cmd: cmd_from_string(String::from("git reset HEAD --hard")).unwrap(),
+        cmd: cmd_from_string(config.test_cmd).unwrap(),
     };
 
     let root = std::env::current_dir().unwrap();
@@ -72,7 +83,7 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
             Ok(event) => {
                 println!("changed: {:?}", event);
                 let paths = event.paths;
-                let result = orc.handle_event(orchestrator::FileChangeEvent{paths: paths});
+                let result = orc.handle_event(orchestrator::FileChangeEvent { paths: paths });
                 match result {
                     Ok(_) => {}
                     Err(err) => {
@@ -87,6 +98,7 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     Ok(())
 }
 
+// TODO find where the config file is, and run from there
 fn get_path() -> io::Result<std::path::PathBuf> {
     match std::env::args().nth(1) {
         Some(p) => {
@@ -104,16 +116,54 @@ fn get_path() -> io::Result<std::path::PathBuf> {
     }
 }
 
-// TODO(dmiller): this should take a configuration. CLI, convention, toml file?
-fn main() {
-    let path = get_path().expect("Unable to get path");
+#[derive(Serialize, Deserialize, Debug)]
+struct Config {
+    build_cmd: String,
+    test_cmd: String,
+    revert_cmd: String,
+    commit_cmd: String,
+}
 
-    println!(
-        "watching {}",
-        path.to_str().expect("unable to convert path to string")
-    );
-    if let Err(e) = watch(path) {
-        println!("error: {:?}", e)
+fn get_config(path: std::path::PathBuf) -> io::Result<Config> {
+    let contents = std::fs::read_to_string(path);
+    match contents {
+        Ok(file_contents) => {
+            let c: Config = serde_json::from_str(file_contents.as_ref()).unwrap();
+            return Ok(c);
+        }
+        Err(e) => return Err(e),
+    }
+}
+
+fn main() {
+    let opts: Opts = Opts::parse();
+    let root = match opts.root {
+        Some(p) => std::path::PathBuf::from(p),
+        None => get_path().expect("Unable to get path"),
+    };
+    let config = match opts.config {
+        Some(c) => get_config(std::path::PathBuf::from(c)),
+        None => get_config(root.join(".tcr")),
+    };
+
+    match config {
+        Ok(c) => {
+            println!("We read the config! {:?}", c);
+            println!(
+                "watching {}",
+                root.to_str().expect("unable to convert path to string")
+            );
+            if let Err(e) = watch_and_run(root, c) {
+                println!("error: {:?}", e)
+            }
+        }
+        Err(e) => {
+            println!(
+                "Error reading config at path {:?}: {:?}.\n TODO help user make config",
+                root, e
+            );
+            std::process::exit(1);
+        }
     }
 }
 

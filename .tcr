@@ -1,0 +1,6 @@
+{
+    "build_cmd": "true",
+    "test_cmd": "true",
+    "revert_cmd": "true",
+    "commit_cmd": "true"
+}
