@@ -114,4 +114,20 @@ mod tests {
         assert_eq!(checker.is_ignored(path.to_path_buf()), true);
     }
 
+    #[test]
+    fn test_gitignore_match_file_doesnt_exist() {
+        let tmp_dir = tempdir::TempDir::new("test").unwrap();
+        let gi_path = &tmp_dir.path().join(".gitignore");
+
+        let mut file = File::create(gi_path).unwrap();
+        file.write_all(b"bar").unwrap();
+
+        let (gi, _) = Gitignore::new(gi_path);
+
+        let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
+
+        let path = tmp_dir.path().join("bar");
+        assert_eq!(checker.is_ignored(path.to_path_buf()), true);
+    }
+
 }
