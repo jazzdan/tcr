@@ -12,7 +12,6 @@ mod orchestrator;
 #[derive(Clap)]
 #[clap(version = "0.1", author = "Dan Miller. <dan@dmiller.dev>")]
 struct Opts {
-    /// Sets a custom config file. Could have been an Option<T> with no default too
     #[clap(short, long)]
     config: Option<String>,
     #[clap(short, long)]
@@ -32,7 +31,7 @@ fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
         }
         None => {
             // Not a great err msg...
-            return Err("Expected there to be at least one thing in the command");
+            return Err("Expected cmd to not be empty");
         }
     }
 
@@ -42,7 +41,6 @@ fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
     return Ok(command);
 }
 
-// TODO(dmiller): this should be a vector of arguments?
 struct CmdRunner {
     cmd: std::process::Command,
 }
@@ -100,8 +98,7 @@ fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> 
     Ok(())
 }
 
-// TODO
-// find where the config file is, and run from there
+// TODO find where the config file is, and run from there
 fn get_path() -> io::Result<std::path::PathBuf> {
     match std::env::args().nth(1) {
         Some(p) => {
