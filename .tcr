@@ -1,5 +1,5 @@
 {
-    "build_cmd": "true",
+    "build_cmd": "cargo build",
     "test_cmd": "true",
     "revert_cmd": "true",
     "commit_cmd": "true"

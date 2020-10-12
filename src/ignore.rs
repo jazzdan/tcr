@@ -2,7 +2,13 @@ use gitignore;
 
 pub struct Checker<'a> {
     root: std::path::PathBuf,
+    // TODO maybe replace this with the gitignore module in the ignore crate
     gitignore: Option<gitignore::File<'a>>,
+}
+
+// TODO
+fn is_editor_file(path: std::path::PathBuf) -> bool {
+    return false;
 }
 
 // TODO this isn't working for the current gitignore file. Files in ./target are triggering changes

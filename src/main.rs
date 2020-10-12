@@ -74,7 +74,9 @@ fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> 
     };
 
     let root = std::env::current_dir().unwrap();
-    let checker = ignore::Checker::new(root, None);
+    let gitignore_path = root.join(".gitignore").to_path_buf();
+    let gitignore =  gitignore::File::new(&gitignore_path).ok();
+    let checker = ignore::Checker::new(root, gitignore);
 
     let mut orc = orchestrator::Orchestrator::new(checker, builder, tester, committer, reverter);
 
