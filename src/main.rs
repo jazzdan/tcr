@@ -42,7 +42,7 @@ impl orchestrator::Runner for CmdRunner {
     }
 }
 
-fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
+fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> {
     let (tx, rx) = std::sync::mpsc::channel();
 
     // TODO(dmiller): uhh this doesn't actually watch recursively??
@@ -52,16 +52,16 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     watcher.watch(path, RecursiveMode::Recursive)?;
 
     let builder = &mut CmdRunner {
-        cmd: cmd_from_string(String::from("cargo build")).unwrap(),
+        cmd: cmd_from_string(config.build_cmd).unwrap(),
     };
     let committer = &mut CmdRunner {
-        cmd: cmd_from_string(String::from("git commit -am 'working'")).unwrap(),
+        cmd: cmd_from_string(config.commit_cmd).unwrap(),
     };
     let tester = &mut CmdRunner {
-        cmd: cmd_from_string(String::from("cargo test")).unwrap(),
+        cmd: cmd_from_string(config.revert_cmd).unwrap(),
     };
     let reverter = &mut CmdRunner {
-        cmd: cmd_from_string(String::from("git reset HEAD --hard")).unwrap(),
+        cmd: cmd_from_string(config.test_cmd).unwrap(),
     };
 
     let root = std::env::current_dir().unwrap();
@@ -122,12 +122,11 @@ fn read_config(path: std::path::PathBuf) -> io::Result<Config> {
         Ok(file_contents) => {
             let c: Config = serde_json::from_str(file_contents.as_ref()).unwrap();
             return Ok(c);
-        },
+        }
         Err(e) => return Err(e),
     }
 }
 
-// TODO(dmiller): this should take a configuration. CLI, convention, toml/yaml/json file?
 fn main() {
     let path = get_path().expect("Unable to get path");
 
@@ -136,19 +135,21 @@ fn main() {
     match config {
         Ok(c) => {
             println!("We read the config! {:?}", c);
-        },
+            println!(
+                "watching {}",
+                path.to_str().expect("unable to convert path to string")
+            );
+            if let Err(e) = watch_and_run(path, c) {
+                println!("error: {:?}", e)
+            }
+        }
         Err(e) => {
-            println!("Error reading config at path {:?}: {:?}.\n TODO help user make config", path, e);
+            println!(
+                "Error reading config at path {:?}: {:?}.\n TODO help user make config",
+                path, e
+            );
             std::process::exit(1);
         }
-    }
-
-    println!(
-        "watching {}",
-        path.to_str().expect("unable to convert path to string")
-    );
-    if let Err(e) = watch(path) {
-        println!("error: {:?}", e)
     }
 }
 
