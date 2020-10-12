@@ -1,3 +1,4 @@
+use clap::Clap;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use serde_json;
@@ -7,6 +8,16 @@ use std::process::Command;
 
 mod ignore;
 mod orchestrator;
+
+#[derive(Clap)]
+#[clap(version = "0.1", author = "Dan Miller. <dan@dmiller.dev>")]
+struct Opts {
+    /// Sets a custom config file. Could have been an Option<T> with no default too
+    #[clap(short, long)]
+    config: Option<String>,
+    #[clap(short, long)]
+    root: Option<String>,
+}
 
 // "ls -al" => Command::new("ls").arg("-al");
 fn cmd_from_string(s: String) -> Result<std::process::Command, &'static str> {
@@ -116,7 +127,7 @@ struct Config {
     commit_cmd: String,
 }
 
-fn read_config(path: std::path::PathBuf) -> io::Result<Config> {
+fn get_config(path: std::path::PathBuf) -> io::Result<Config> {
     let contents = std::fs::read_to_string(path);
     match contents {
         Ok(file_contents) => {
@@ -128,25 +139,31 @@ fn read_config(path: std::path::PathBuf) -> io::Result<Config> {
 }
 
 fn main() {
-    let path = get_path().expect("Unable to get path");
+    let opts: Opts = Opts::parse();
+    let root = match opts.root {
+        Some(p) => std::path::PathBuf::from(p),
+        None => get_path().expect("Unable to get path"),
+    };
+    let config = match opts.config {
+        Some(c) => get_config(std::path::PathBuf::from(c)),
+        None => get_config(root.join(".tcr")),
+    };
 
-    // TODO make this CLI configurable
-    let config = read_config(path.join(".tcr"));
     match config {
         Ok(c) => {
             println!("We read the config! {:?}", c);
             println!(
                 "watching {}",
-                path.to_str().expect("unable to convert path to string")
+                root.to_str().expect("unable to convert path to string")
             );
-            if let Err(e) = watch_and_run(path, c) {
+            if let Err(e) = watch_and_run(root, c) {
                 println!("error: {:?}", e)
             }
         }
         Err(e) => {
             println!(
                 "Error reading config at path {:?}: {:?}.\n TODO help user make config",
-                path, e
+                root, e
             );
             std::process::exit(1);
         }

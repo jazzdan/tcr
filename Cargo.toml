@@ -13,6 +13,7 @@ mockall = "0.8.1"
 gitignore = "1.0.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+clap = "3.0.0-beta.2"
 
 [dev-dependencies]
 tempdir = "0.3.7"
