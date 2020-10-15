@@ -681,6 +681,7 @@ dependencies = [
  "ignore",
  "mockall",
  "notify",
+ "regex",
  "serde",
  "serde_json",
  "tempdir",
