@@ -1,5 +1,4 @@
 use ignore::gitignore::Gitignore;
-use regex::Regex;
 
 pub struct Checker {
     root: std::path::PathBuf,
