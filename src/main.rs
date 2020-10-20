@@ -55,7 +55,7 @@ impl orchestrator::Runner for CmdRunner {
 fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> {
     let (tx, rx) = std::sync::mpsc::channel();
 
-    // TODO(dmiller): uhh this doesn't actually watch recursively??
+    // TODO(dmiller): uhh this doesn't actually watch recursively on WSL?
     // TODO we need to put some debouncing on this or something
     let mut watcher: RecommendedWatcher = Watcher::new_immediate(move |res| tx.send(res).unwrap())?;
 
@@ -103,7 +103,7 @@ fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> 
     Ok(())
 }
 
-// TODO find where the config file is, and run from there
+// TODO if not specified find where the config file is, and run from there
 fn get_path() -> io::Result<std::path::PathBuf> {
     match std::env::args().nth(1) {
         Some(p) => {

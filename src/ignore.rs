@@ -164,4 +164,60 @@ mod tests {
         let path = tmp_dir.path().join(".something.swp");
         assert_eq!(checker.is_ignored(path.to_path_buf()), true);
     }
+
+    #[test]
+    fn test_gitignore_match_target_directory_glob() {
+        let tmp_dir = tempdir::TempDir::new("test").unwrap();
+        let gi_path = &tmp_dir.path().join(".gitignore");
+
+        let mut file = File::create(gi_path).unwrap();
+        file.write_all(b"target/**").unwrap();
+
+        let (gi, err) = Gitignore::new(gi_path);
+        match err {
+            Some(_e) => {
+                println!("Failed to create gitignore")
+            },
+            None => {},
+        }
+
+        let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
+
+        let base_path = tmp_dir.path().join("target").join("debug");
+        let path = base_path.join("tcr.d");
+
+        std::fs::create_dir_all(base_path).unwrap();
+        let mut file = File::create(path.to_owned()).unwrap();
+        file.write_all(b"hello world").unwrap();
+
+        assert_eq!(checker.is_ignored(path.to_path_buf()), true);
+    }
+
+    #[test] #[ignore]
+    fn test_gitignore_match_target_directory() {
+        let tmp_dir = tempdir::TempDir::new("test").unwrap();
+        let gi_path = &tmp_dir.path().join(".gitignore");
+
+        let mut file = File::create(gi_path).unwrap();
+        file.write_all(b"target").unwrap();
+
+        let (gi, err) = Gitignore::new(gi_path);
+        match err {
+            Some(_e) => {
+                println!("Failed to create gitignore")
+            },
+            None => {},
+        }
+
+        let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
+
+        let base_path = tmp_dir.path().join("target").join("debug");
+        let path = base_path.join("tcr.d");
+
+        std::fs::create_dir_all(base_path).unwrap();
+        let mut file = File::create(path.to_owned()).unwrap();
+        file.write_all(b"hello world").unwrap();
+
+        assert_eq!(checker.is_ignored(path.to_path_buf()), true);
+    }
 }
