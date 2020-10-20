@@ -19,13 +19,26 @@ pub struct Orchestrator<'a> {
     revert: &'a mut dyn Runner,
 }
 
+fn print_output(out: &std::process::Output) {
+    let utf_string = std::str::from_utf8(&out.stdout);
+    match utf_string {
+        Ok(s) => println!("{}", s),
+        Err(e) => eprintln!("Error handlng process stdout: {:#?}", e),
+    }
+
+    let utf_string = std::str::from_utf8(&out.stderr);
+    match utf_string {
+        Ok(s) => println!("{}", s),
+        Err(e) => eprintln!("Error handlng process stderr: {:#?}", e),
+    }
+}
+
 fn handle_output(
     output: std::result::Result<std::process::Output, std::io::Error>,
 ) -> Option<std::io::Error> {
     match output {
         Ok(res) => {
-            println!("{:?}", std::str::from_utf8(&res.stdout));
-            println!("{:?}", std::str::from_utf8(&res.stderr));
+            print_output(&res);
 
             if !res.status.success() {
                 return Some(Error::new(
@@ -33,7 +46,6 @@ fn handle_output(
                     "cmd returned non-zero exit code",
                 ));
             }
-            // TODO(dmiller): print output
             return None;
         }
         Err(e) => {
