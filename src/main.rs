@@ -87,8 +87,8 @@ fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> 
             Ok(event) => {
                 // TODO make this gated on a verbose flag
                 println!("changed: {:?}", event);
-                let paths = event.paths;
-                let result = orc.handle_event(orchestrator::FileChangeEvent { paths: paths });
+                let fce = orchestrator::FileChangeEvent::new(event); 
+                let result = orc.handle_event(fce);
                 match result {
                     Ok(_) => {}
                     Err(err) => {

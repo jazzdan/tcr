@@ -1,4 +1,5 @@
 use ignore::gitignore::Gitignore;
+use crate::orchestrator::FileChangeEvent;
 
 pub struct Checker {
     root: std::path::PathBuf,
@@ -16,18 +17,19 @@ impl Checker {
         };
     }
 
-    pub fn is_ignored(&mut self, path: std::path::PathBuf) -> bool {
-        if path.starts_with(self.root.join(".git")) {
+    // make this a FileChangeEvent
+    pub fn is_ignored(&mut self, event: FileChangeEvent) -> bool {
+        let paths = event.paths;
+        if paths.iter().all(|p| p.starts_with(self.root.join(".git"))) {
             return true;
         }
-        if self.is_editor_file(&path) {
+        if paths.iter().all(|p| self.is_editor_file(&p)) {
             return true;
         }
         match &self.gitignore {
             Some(gi) => {
-                // TODO could we pass through whether the path is a directory from the notify crate?
-                let is_dir = false;
-                return gi.matched(path, is_dir).is_ignore();
+                let is_dir = event.is_dir;
+                return paths.iter().all(|p| gi.matched(p, is_dir).is_ignore());
             }
             None => {}
         }
@@ -61,13 +63,27 @@ mod tests {
     use std::io::prelude::*;
     use tempdir;
 
+    fn event_for_path(path: std::path::PathBuf) -> FileChangeEvent {
+        return FileChangeEvent{
+            paths: vec![path],
+            is_dir: false,
+        };
+    }
+
+    fn event_for_dir(path: std::path::PathBuf) -> FileChangeEvent {
+        return FileChangeEvent{
+            paths: vec![path],
+            is_dir: true,
+        };
+    }
+
     #[test]
     fn test_ignore_no_gitignore() {
         let tmp_dir = tempdir::TempDir::new("test").unwrap();
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), None);
 
-        let path = tmp_dir.path().join("foo");
-        assert_eq!(checker.is_ignored(path.to_path_buf()), false);
+        let event = event_for_path(tmp_dir.path().join("foo"));
+        assert_eq!(checker.is_ignored(event), false);
     }
 
     #[test]
@@ -83,11 +99,12 @@ mod tests {
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
 
         let path = tmp_dir.path().join("foo");
+        let event = event_for_path(tmp_dir.path().join("foo"));
 
         let mut file = File::create(path.to_owned()).unwrap();
         file.write_all(b"foo").unwrap();
 
-        assert_eq!(checker.is_ignored(path.to_path_buf()), false);
+        assert_eq!(checker.is_ignored(event), false);
     }
 
     #[test]
@@ -103,11 +120,12 @@ mod tests {
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
 
         let path = tmp_dir.path().join("bar");
+        let event = event_for_path(tmp_dir.path().join("bar"));
 
         let mut file = File::create(path.to_owned()).unwrap();
         file.write_all(b"bar").unwrap();
 
-        assert_eq!(checker.is_ignored(path.to_path_buf()), true);
+        assert_eq!(checker.is_ignored(event), true);
     }
 
     #[test]
@@ -125,10 +143,11 @@ mod tests {
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
 
         let path = git_dir_path.join("some_file");
+        let event = event_for_path(git_dir_path.join("some_file"));
         let mut file = File::create(path.to_owned()).unwrap();
         file.write_all(b"foo").unwrap();
 
-        assert_eq!(checker.is_ignored(path.to_path_buf()), true);
+        assert_eq!(checker.is_ignored(event), true);
     }
 
     #[test]
@@ -144,7 +163,8 @@ mod tests {
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
 
         let path = tmp_dir.path().join("bar");
-        assert_eq!(checker.is_ignored(path.to_path_buf()), true);
+        let event = event_for_path(path);
+        assert_eq!(checker.is_ignored(event), true);
     }
 
     #[test]
@@ -153,7 +173,8 @@ mod tests {
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), None);
 
         let path = tmp_dir.path().join(".#blah");
-        assert_eq!(checker.is_ignored(path.to_path_buf()), true);
+        let event = event_for_path(path);
+        assert_eq!(checker.is_ignored(event), true);
     }
 
     #[test]
@@ -162,7 +183,8 @@ mod tests {
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), None);
 
         let path = tmp_dir.path().join(".something.swp");
-        assert_eq!(checker.is_ignored(path.to_path_buf()), true);
+        let event = event_for_path(path);
+        assert_eq!(checker.is_ignored(event), true);
     }
 
     #[test]
@@ -185,12 +207,13 @@ mod tests {
 
         let base_path = tmp_dir.path().join("target").join("debug");
         let path = base_path.join("tcr.d");
+        let event = event_for_path(base_path.join("tcr.d"));
 
         std::fs::create_dir_all(base_path).unwrap();
         let mut file = File::create(path.to_owned()).unwrap();
         file.write_all(b"hello world").unwrap();
 
-        assert_eq!(checker.is_ignored(path.to_path_buf()), true);
+        assert_eq!(checker.is_ignored(event), true);
     }
 
     #[test] #[ignore]
@@ -213,11 +236,12 @@ mod tests {
 
         let base_path = tmp_dir.path().join("target").join("debug");
         let path = base_path.join("tcr.d");
+        let event = event_for_path(base_path.join("tcr.d"));
 
         std::fs::create_dir_all(base_path).unwrap();
         let mut file = File::create(path.to_owned()).unwrap();
         file.write_all(b"hello world").unwrap();
 
-        assert_eq!(checker.is_ignored(path.to_path_buf()), true);
+        assert_eq!(checker.is_ignored(event), true);
     }
 }

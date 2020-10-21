@@ -1,9 +1,33 @@
+use notify::Event;
+use notify::EventKind;
 use std::io::{self, Error, ErrorKind};
 
 use crate::ignore::Checker;
 
 pub struct FileChangeEvent {
     pub paths: std::vec::Vec<std::path::PathBuf>,
+    pub is_dir: bool,
+}
+
+impl FileChangeEvent {
+    pub fn new(event: Event) -> FileChangeEvent {
+        let is_directory = match event.kind {
+            EventKind::Create(e) => match e {
+                notify::event::CreateKind::Folder => true,
+                _ => false,
+            },
+            EventKind::Modify(_e) => false,
+            EventKind::Remove(e) => match e {
+                notify::event::RemoveKind::Folder => true,
+                _ => false,
+            },
+            _ => false,
+        };
+        return FileChangeEvent {
+            paths: event.paths,
+            is_dir: is_directory,
+        };
+    }
 }
 
 #[mockall::automock]
@@ -74,11 +98,7 @@ impl Orchestrator<'_> {
         &mut self,
         event: FileChangeEvent,
     ) -> std::result::Result<(), std::io::Error> {
-        if event
-            .paths
-            .iter()
-            .all(|p| self.ignore.is_ignored(p.to_path_buf()))
-        {
+        if self.ignore.is_ignored(event) {
             return Ok(());
         }
 
@@ -142,6 +162,7 @@ mod tests {
     fn ok_event() -> FileChangeEvent {
         return FileChangeEvent {
             paths: vec![std::path::PathBuf::from(r"/home/stuff/hi")],
+            is_dir: false,
         };
     }
 
@@ -238,6 +259,7 @@ mod tests {
 
         let event = FileChangeEvent {
             paths: vec![std::path::PathBuf::from(r"/home/stuff/.git")],
+            is_dir: true,
         };
 
         orc.handle_event(event).expect("This shouldn't error");
