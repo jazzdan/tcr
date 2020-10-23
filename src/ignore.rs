@@ -1,5 +1,5 @@
-use ignore::gitignore::Gitignore;
 use crate::orchestrator::FileChangeEvent;
+use ignore::gitignore::Gitignore;
 
 pub struct Checker {
     root: std::path::PathBuf,
@@ -29,7 +29,9 @@ impl Checker {
         match &self.gitignore {
             Some(gi) => {
                 let is_dir = event.is_dir;
-                return paths.iter().all(|p| gi.matched(p, is_dir).is_ignore());
+                return paths
+                    .iter()
+                    .all(|p| gi.matched_path_or_any_parents(p, is_dir).is_ignore());
             }
             None => {}
         }
@@ -64,14 +66,14 @@ mod tests {
     use tempdir;
 
     fn event_for_path(path: std::path::PathBuf) -> FileChangeEvent {
-        return FileChangeEvent{
+        return FileChangeEvent {
             paths: vec![path],
             is_dir: false,
         };
     }
 
     fn event_for_dir(path: std::path::PathBuf) -> FileChangeEvent {
-        return FileChangeEvent{
+        return FileChangeEvent {
             paths: vec![path],
             is_dir: true,
         };
@@ -197,10 +199,8 @@ mod tests {
 
         let (gi, err) = Gitignore::new(gi_path);
         match err {
-            Some(_e) => {
-                println!("Failed to create gitignore")
-            },
-            None => {},
+            Some(_e) => println!("Failed to create gitignore"),
+            None => {}
         }
 
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
@@ -216,7 +216,7 @@ mod tests {
         assert_eq!(checker.is_ignored(event), true);
     }
 
-    #[test] #[ignore]
+    #[test]
     fn test_gitignore_match_target_directory() {
         let tmp_dir = tempdir::TempDir::new("test").unwrap();
         let gi_path = &tmp_dir.path().join(".gitignore");
@@ -226,10 +226,8 @@ mod tests {
 
         let (gi, err) = Gitignore::new(gi_path);
         match err {
-            Some(_e) => {
-                println!("Failed to create gitignore")
-            },
-            None => {},
+            Some(_e) => println!("Failed to create gitignore"),
+            None => {}
         }
 
         let mut checker = Checker::new(tmp_dir.path().to_path_buf(), Some(gi));
