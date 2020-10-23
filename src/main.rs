@@ -8,8 +8,8 @@ use std::path::Path;
 use std::process::Command;
 
 mod ignore;
-mod orchestrator;
 mod log;
+mod orchestrator;
 
 #[derive(Clap)]
 #[clap(version = "0.1", author = "Dan Miller <dan@dmiller.dev>")]
@@ -55,7 +55,11 @@ impl orchestrator::Runner for CmdRunner {
     }
 }
 
-fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> {
+fn watch_and_run<P: AsRef<Path>>(
+    path: P,
+    config: Config,
+    logger: log::VerboseLogger,
+) -> notify::Result<()> {
     let (tx, rx) = std::sync::mpsc::channel();
 
     // TODO(dmiller): uhh this doesn't actually watch recursively on WSL?
@@ -83,13 +87,14 @@ fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> 
     let (gitignore, _) = Gitignore::new(&gitignore_path);
     let checker = ignore::Checker::new(root, Some(gitignore));
 
-    let mut orc = orchestrator::Orchestrator::new(checker, builder, tester, committer, reverter);
+    let mut orc =
+        orchestrator::Orchestrator::new(checker, builder, tester, committer, reverter, &logger);
 
     for res in rx {
         match res {
             Ok(event) => {
                 // TODO make this gated on a verbose flag
-                println!("changed: {:?}", event);
+                logger.log(format!("changed: {:?}", event));
                 let fce = orchestrator::FileChangeEvent::new(event);
                 let result = orc.handle_event(fce);
                 match result {
@@ -126,8 +131,11 @@ struct Config {
     commit_cmd: String,
 }
 
-fn get_config(path: std::path::PathBuf) -> io::Result<Config> {
-    println!("Path we're trying to read from {:?}", path);
+fn get_config(logger: &log::VerboseLogger, path: std::path::PathBuf) -> io::Result<Config> {
+    logger.log(format!(
+        "Attempting to read from config at {}",
+        path.to_str().unwrap()
+    ));
     let contents = std::fs::read_to_string(path);
     match contents {
         Ok(file_contents) => {
@@ -144,13 +152,12 @@ fn main() {
         Some(p) => std::path::PathBuf::from(p),
         None => get_path().expect("Unable to get path"),
     };
-    println!("Config: {:#x?}", opts.config);
-    let config = match opts.config {
-        Some(c) => get_config(std::path::PathBuf::from(c)),
-        None => get_config(root.join(".tcr")),
-    };
-
     let logger = log::VerboseLogger::new(opts.verbose);
+    logger.log(format!("Config: {:#x?}", opts.config));
+    let config = match opts.config {
+        Some(c) => get_config(&logger, std::path::PathBuf::from(c)),
+        None => get_config(&logger, root.join(".tcr")),
+    };
 
     match config {
         Ok(c) => {
@@ -159,7 +166,7 @@ fn main() {
                 "watching {}",
                 root.to_str().expect("unable to convert path to string")
             );
-            if let Err(e) = watch_and_run(root, c) {
+            if let Err(e) = watch_and_run(root, c, logger) {
                 println!("error: {:?}", e)
             }
         }

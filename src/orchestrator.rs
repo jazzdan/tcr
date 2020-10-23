@@ -4,6 +4,8 @@ use std::io::{self, Error, ErrorKind};
 
 use crate::ignore::Checker;
 
+use crate::log::VerboseLogger;
+
 pub struct FileChangeEvent {
     pub paths: std::vec::Vec<std::path::PathBuf>,
     pub is_dir: bool,
@@ -41,6 +43,7 @@ pub struct Orchestrator<'a> {
     test: &'a mut dyn Runner,
     commit: &'a mut dyn Runner,
     revert: &'a mut dyn Runner,
+    _logger: &'a VerboseLogger,
 }
 
 fn print_output(out: &std::process::Output) {
@@ -85,6 +88,7 @@ impl Orchestrator<'_> {
         test: &'a mut dyn Runner,
         commit: &'a mut dyn Runner,
         revert: &'a mut dyn Runner,
+        logger: &'a VerboseLogger,
     ) -> Orchestrator<'a> {
         return Orchestrator {
             ignore,
@@ -92,6 +96,7 @@ impl Orchestrator<'_> {
             test,
             commit,
             revert,
+            _logger: logger,
         };
     }
     pub fn handle_event(
@@ -204,6 +209,10 @@ mod tests {
         return succeed();
     }
 
+    fn logger() -> VerboseLogger {
+        return VerboseLogger::new(false);
+    }
+
     #[test]
     fn test_orchestrator_build_fails() {
         let mut build = fail();
@@ -218,6 +227,7 @@ mod tests {
             test: &mut test,
             commit: &mut commit,
             revert: &mut revert,
+            _logger: &logger(),
         };
 
         orc.handle_event(ok_event()).expect("This shouldn't error");
@@ -237,6 +247,7 @@ mod tests {
             test: &mut test,
             commit: &mut commit,
             revert: &mut revert,
+            _logger: &logger(),
         };
 
         orc.handle_event(ok_event()).expect("This shouldn't error");
@@ -255,6 +266,7 @@ mod tests {
             test: &mut test,
             commit: &mut commit,
             revert: &mut revert,
+            _logger: &logger(),
         };
 
         let event = FileChangeEvent {
