@@ -1,3 +1,4 @@
+use ::ignore::gitignore::Gitignore;
 use clap::Clap;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
@@ -5,10 +6,10 @@ use serde_json;
 use std::io::{self};
 use std::path::Path;
 use std::process::Command;
-use ::ignore::gitignore::Gitignore as Gitignore;
 
 mod ignore;
 mod orchestrator;
+mod log;
 
 #[derive(Clap)]
 #[clap(version = "0.1", author = "Dan Miller <dan@dmiller.dev>")]
@@ -17,6 +18,8 @@ struct Opts {
     config: Option<String>,
     #[clap(short, long)]
     root: Option<String>,
+    #[clap(short, long)]
+    verbose: bool,
 }
 
 // "ls -al" => Command::new("ls").arg("-al");
@@ -77,7 +80,7 @@ fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> 
     let root = std::env::current_dir().unwrap();
     let gitignore_path = root.join(".gitignore").to_path_buf();
     // TODO should I handle the error here? Weird syntax.
-    let (gitignore, _) =  Gitignore::new(&gitignore_path);
+    let (gitignore, _) = Gitignore::new(&gitignore_path);
     let checker = ignore::Checker::new(root, Some(gitignore));
 
     let mut orc = orchestrator::Orchestrator::new(checker, builder, tester, committer, reverter);
@@ -87,7 +90,7 @@ fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> 
             Ok(event) => {
                 // TODO make this gated on a verbose flag
                 println!("changed: {:?}", event);
-                let fce = orchestrator::FileChangeEvent::new(event); 
+                let fce = orchestrator::FileChangeEvent::new(event);
                 let result = orc.handle_event(fce);
                 match result {
                     Ok(_) => {}
@@ -105,19 +108,13 @@ fn watch_and_run<P: AsRef<Path>>(path: P, config: Config) -> notify::Result<()> 
 
 // TODO if not specified find where the config file is, and run from there
 fn get_path() -> io::Result<std::path::PathBuf> {
-    match std::env::args().nth(1) {
-        Some(p) => {
-            let path = std::path::PathBuf::from(p);
-            return Ok(path);
+    match std::env::current_dir() {
+        Ok(p) => {
+            return Ok(p);
         }
-        None => match std::env::current_dir() {
-            Ok(p) => {
-                return Ok(p);
-            }
-            Err(e) => {
-                return Err(e);
-            }
-        },
+        Err(e) => {
+            return Err(e);
+        }
     }
 }
 
@@ -130,6 +127,7 @@ struct Config {
 }
 
 fn get_config(path: std::path::PathBuf) -> io::Result<Config> {
+    println!("Path we're trying to read from {:?}", path);
     let contents = std::fs::read_to_string(path);
     match contents {
         Ok(file_contents) => {
@@ -146,14 +144,17 @@ fn main() {
         Some(p) => std::path::PathBuf::from(p),
         None => get_path().expect("Unable to get path"),
     };
+    println!("Config: {:#x?}", opts.config);
     let config = match opts.config {
         Some(c) => get_config(std::path::PathBuf::from(c)),
         None => get_config(root.join(".tcr")),
     };
 
+    let logger = log::VerboseLogger::new(opts.verbose);
+
     match config {
         Ok(c) => {
-            println!("We read the config! {:?}", c);
+            logger.log(format!("We read the config:\n {:#?}", c));
             println!(
                 "watching {}",
                 root.to_str().expect("unable to convert path to string")
