@@ -93,7 +93,6 @@ fn watch_and_run<P: AsRef<Path>>(
     for res in rx {
         match res {
             Ok(event) => {
-                // TODO make this gated on a verbose flag
                 logger.log(format!("changed: {:?}", event));
                 let fce = orchestrator::FileChangeEvent::new(event);
                 let result = orc.handle_event(fce);
