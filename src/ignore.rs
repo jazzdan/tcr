@@ -17,7 +17,6 @@ impl Checker {
         };
     }
 
-    // make this a FileChangeEvent
     pub fn is_ignored(&mut self, event: FileChangeEvent) -> bool {
         let paths = event.paths;
         if paths.iter().all(|p| p.starts_with(self.root.join(".git"))) {
