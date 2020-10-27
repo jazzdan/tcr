@@ -1,5 +1,6 @@
 use crate::orchestrator::FileChangeEvent;
 use ignore::gitignore::Gitignore;
+use itertools::Itertools;
 
 pub struct Checker {
     root: std::path::PathBuf,

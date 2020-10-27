@@ -1,11 +1,13 @@
+use colored::*;
+use itertools::Itertools;
 use notify::Event;
 use notify::EventKind;
 use std::io::{self, Error, ErrorKind};
 
 use crate::ignore::Checker;
-
 use crate::log::VerboseLogger;
 
+#[derive(Clone)]
 pub struct FileChangeEvent {
     pub paths: std::vec::Vec<std::path::PathBuf>,
     pub is_dir: bool,
@@ -43,19 +45,27 @@ pub struct Orchestrator<'a> {
     test: &'a mut dyn Runner,
     commit: &'a mut dyn Runner,
     revert: &'a mut dyn Runner,
-    _logger: &'a VerboseLogger,
+    logger: &'a VerboseLogger,
 }
 
 fn print_output(out: &std::process::Output) {
     let utf_string = std::str::from_utf8(&out.stdout);
     match utf_string {
-        Ok(s) => println!("{}", s),
+        Ok(s) => {
+            if s.len() != 0 {
+                println!("{}", s)
+            }
+        }
         Err(e) => eprintln!("Error handlng process stdout: {:#?}", e),
     }
 
     let utf_string = std::str::from_utf8(&out.stderr);
     match utf_string {
-        Ok(s) => println!("{}", s),
+        Ok(s) => {
+            if s.len() != 0 {
+                println!("{}", s)
+            }
+        }
         Err(e) => eprintln!("Error handlng process stderr: {:#?}", e),
     }
 }
@@ -96,21 +106,32 @@ impl Orchestrator<'_> {
             test,
             commit,
             revert,
-            _logger: logger,
+            logger,
         };
     }
     pub fn handle_event(
         &mut self,
         event: FileChangeEvent,
     ) -> std::result::Result<(), std::io::Error> {
+        let paths_str: String = event
+            .paths
+            .iter()
+            .map(|p| p.to_str().unwrap())
+            .intersperse(", ")
+            .collect();
         if self.ignore.is_ignored(event) {
+            self.logger
+                .log(format!("{} {}", "Files are ignored: ".yellow(), paths_str));
             return Ok(());
+        } else {
+            println!("{}: {}", "Saw file changes".yellow(), paths_str);
         }
 
+        println!("Running build..");
         let build = self.build.run();
         match handle_output(build) {
             Some(err) => {
-                println!("Build failed: {:?}", err);
+                println!("{}: {:?}", "Build failed".red(), err);
                 let res = self.run_revert();
                 if res.is_err() {
                     let err = res.err();
@@ -118,12 +139,12 @@ impl Orchestrator<'_> {
                 }
                 return Ok(());
             }
-            None => {}
+            None => println!("{}", "Build succeeded".green()),
         }
         let test = self.test.run();
         match handle_output(test) {
             Some(err) => {
-                println!("Test failed: {:?}", err);
+                println!("{}: {:?}", "Test failed".red(), err);
                 let res = self.run_revert();
                 if res.is_err() {
                     let err = res.err();
@@ -131,13 +152,14 @@ impl Orchestrator<'_> {
                 }
                 return Ok(());
             }
-            None => {}
+            None => println!("{}", "Tests passed".green()),
         }
 
         let commit = self.commit.run();
         match commit {
-            Ok(_res) => {}
+            Ok(_res) => println!("{}", "Changes committed".green()),
             Err(e) => {
+                eprintln!("{}", "Error comitting changes".red());
                 return Err(e);
             }
         }
@@ -227,7 +249,7 @@ mod tests {
             test: &mut test,
             commit: &mut commit,
             revert: &mut revert,
-            _logger: &logger(),
+            logger: &logger(),
         };
 
         orc.handle_event(ok_event()).expect("This shouldn't error");
@@ -247,7 +269,7 @@ mod tests {
             test: &mut test,
             commit: &mut commit,
             revert: &mut revert,
-            _logger: &logger(),
+            logger: &logger(),
         };
 
         orc.handle_event(ok_event()).expect("This shouldn't error");
@@ -266,7 +288,7 @@ mod tests {
             test: &mut test,
             commit: &mut commit,
             revert: &mut revert,
-            _logger: &logger(),
+            logger: &logger(),
         };
 
         let event = FileChangeEvent {
