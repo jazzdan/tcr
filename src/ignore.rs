@@ -1,5 +1,6 @@
 use crate::orchestrator::FileChangeEvent;
 use ignore::gitignore::Gitignore;
+#[allow(unused_imports)]
 use itertools::Itertools;
 
 pub struct Checker {
@@ -69,13 +70,6 @@ mod tests {
         return FileChangeEvent {
             paths: vec![path],
             is_dir: false,
-        };
-    }
-
-    fn event_for_dir(path: std::path::PathBuf) -> FileChangeEvent {
-        return FileChangeEvent {
-            paths: vec![path],
-            is_dir: true,
         };
     }
 
