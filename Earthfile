@@ -21,6 +21,10 @@ docker:
     ENTRYPOINT ["/usr/src/tcr/tcr"]
     SAVE IMAGE tcr:latest
 
+ci:
+    BUILD +test
+    BUILD +build
+
 all:
     BUILD +test
     BUILD +build
