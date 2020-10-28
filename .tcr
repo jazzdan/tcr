@@ -1,6 +1,6 @@
 {
     "build_cmd": "cargo build",
-    "test_cmd": "true",
-    "revert_cmd": "true",
-    "commit_cmd": "true"
+    "test_cmd": "cargo test",
+    "revert_cmd": "git reset HEAD --hard",
+    "commit_cmd": "git commit -am working"
 }
