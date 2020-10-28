@@ -148,10 +148,9 @@ impl Orchestrator<'_> {
                 "Debouncing. Change occurred to close to last change".yellow()
             ));
             return Ok(());
-        } 
+        }
         self.last_run = Some(Instant::now());
         println!("{}: {}", "Saw file changes".yellow(), paths_str);
-
 
         println!("Running build..");
         let build = self.build.run();
@@ -253,7 +252,7 @@ mod tests {
         return success;
     }
 
-    fn called() -> MockRunner {
+    fn called_once() -> MockRunner {
         return succeed();
     }
 
@@ -267,7 +266,7 @@ mod tests {
 
         let mut test = not_called();
         let mut commit = not_called();
-        let mut revert = called();
+        let mut revert = called_once();
 
         let mut orc = Orchestrator {
             ignore: Checker::new(root(), None),
@@ -289,7 +288,7 @@ mod tests {
         let mut test = fail();
 
         let mut commit = not_called();
-        let mut revert = called();
+        let mut revert = called_once();
 
         let mut orc = Orchestrator {
             ignore: Checker::new(root(), None),
@@ -328,6 +327,46 @@ mod tests {
             is_dir: true,
         };
 
+        orc.handle_event(event).expect("This shouldn't error");
+    }
+
+    #[test]
+    fn debounce() {
+        let mut build = called_once();
+        let mut test = called_once();
+        let mut commit = called_once();
+        let mut revert = not_called();
+
+        let mut orc = Orchestrator {
+            ignore: Checker::new(root(), None),
+            build: &mut build,
+            test: &mut test,
+            commit: &mut commit,
+            revert: &mut revert,
+            logger: &logger(),
+            last_run: None,
+            delay: Duration::from_secs(10),
+        };
+
+        let event = FileChangeEvent {
+            paths: vec![std::path::PathBuf::from(r"/home/stuff/a")],
+            is_dir: true,
+        };
+        orc.handle_event(event).expect("This shouldn't error");
+        let event = FileChangeEvent {
+            paths: vec![std::path::PathBuf::from(r"/home/stuff/b")],
+            is_dir: true,
+        };
+        orc.handle_event(event).expect("This shouldn't error");
+        let event = FileChangeEvent {
+            paths: vec![std::path::PathBuf::from(r"/home/stuff/c")],
+            is_dir: true,
+        };
+        orc.handle_event(event).expect("This shouldn't error");
+        let event = FileChangeEvent {
+            paths: vec![std::path::PathBuf::from(r"/home/stuff/d")],
+            is_dir: true,
+        };
         orc.handle_event(event).expect("This shouldn't error");
     }
 }
