@@ -3,6 +3,7 @@ use itertools::Itertools;
 use notify::Event;
 use notify::EventKind;
 use std::io::{self, Error, ErrorKind};
+use std::time::{Duration, Instant};
 
 use crate::ignore::Checker;
 use crate::log::VerboseLogger;
@@ -46,6 +47,8 @@ pub struct Orchestrator<'a> {
     commit: &'a mut dyn Runner,
     revert: &'a mut dyn Runner,
     logger: &'a VerboseLogger,
+    last_run: Option<Instant>,
+    delay: Duration,
 }
 
 fn print_output(out: &std::process::Output) {
@@ -100,6 +103,7 @@ impl Orchestrator<'_> {
         revert: &'a mut dyn Runner,
         logger: &'a VerboseLogger,
     ) -> Orchestrator<'a> {
+        let delay = Duration::from_secs(1);
         return Orchestrator {
             ignore,
             build,
@@ -107,7 +111,22 @@ impl Orchestrator<'_> {
             commit,
             revert,
             logger,
+            last_run: None,
+            delay,
         };
+    }
+    fn should_debounce(&mut self) -> bool {
+        if self.last_run.is_some() {
+            let then = self.last_run.unwrap();
+            let now = Instant::now();
+
+            if now.duration_since(then) < self.delay {
+                self.last_run = Some(now);
+                return true;
+            }
+        }
+
+        return false;
     }
     pub fn handle_event(
         &mut self,
@@ -123,9 +142,16 @@ impl Orchestrator<'_> {
             self.logger
                 .log(format!("{} {}", "Files are ignored: ".yellow(), paths_str));
             return Ok(());
-        } else {
-            println!("{}: {}", "Saw file changes".yellow(), paths_str);
-        }
+        } else if self.should_debounce() {
+            self.logger.log(format!(
+                "{}",
+                "Debouncing. Change occurred to close to last change".yellow()
+            ));
+            return Ok(());
+        } 
+        self.last_run = Some(Instant::now());
+        println!("{}: {}", "Saw file changes".yellow(), paths_str);
+
 
         println!("Running build..");
         let build = self.build.run();
@@ -250,6 +276,8 @@ mod tests {
             commit: &mut commit,
             revert: &mut revert,
             logger: &logger(),
+            last_run: None,
+            delay: Duration::from_secs(0),
         };
 
         orc.handle_event(ok_event()).expect("This shouldn't error");
@@ -270,6 +298,8 @@ mod tests {
             commit: &mut commit,
             revert: &mut revert,
             logger: &logger(),
+            last_run: None,
+            delay: Duration::from_secs(0),
         };
 
         orc.handle_event(ok_event()).expect("This shouldn't error");
@@ -289,6 +319,8 @@ mod tests {
             commit: &mut commit,
             revert: &mut revert,
             logger: &logger(),
+            last_run: None,
+            delay: Duration::from_secs(0),
         };
 
         let event = FileChangeEvent {
