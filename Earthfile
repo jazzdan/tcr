@@ -1,19 +1,30 @@
 FROM rust:1.47
 WORKDIR /usr/src/tcr
 
-code:
+deps-files:
     COPY Cargo.lock .
     COPY Cargo.toml .
+
+deps:
+    FROM +code
+    RUN cargo build --locked --release
+    RUN rm -rf target/release/deps/tcr*
+    SAVE ARTIFACT target target
+
+code:
+    FROM +deps-files
     COPY src src
 
 test:
     FROM +code
-    RUN cargo test
+    COPY +deps/target target
+    RUN cargo test --locked
 
 build:
     FROM +code
-    RUN cargo build --release
-    RUN cargo install --path .
+    COPY +deps/target target
+    RUN cargo build --locked --release
+    RUN cargo --locked install --path .
     SAVE ARTIFACT /usr/local/cargo/bin/tcr /tcr AS LOCAL build/tcr
 
 docker:
