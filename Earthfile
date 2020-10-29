@@ -39,3 +39,4 @@ ci:
 all:
     BUILD +test
     BUILD +build
+    BUILD +docker
