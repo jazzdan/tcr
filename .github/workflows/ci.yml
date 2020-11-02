@@ -85,8 +85,8 @@ jobs:
           override: true
       - uses: actions-rs/cargo@v1
         with:
-          command: check
-          args: --target=${{ matrix.triple.target }}
+          command: build 
+          args: --target=${{ matrix.triple.target }} --release
           use-cross: ${{ matrix.triple.cross }}
 
     
