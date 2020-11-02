@@ -27,7 +27,7 @@ jobs:
       run: "sudo /bin/sh -c 'wget https://github.com/earthly/earthly/releases/download/v0.3.11/earth-linux-amd64 -O /usr/local/bin/earth && chmod +x /usr/local/bin/earth'"
     - name: Earth version
       run: earth --version
-    - name: Run build
+    - name: Run build and tests
       run: earth +ci
   build-macos:
     runs-on: macos-11.0
@@ -45,9 +45,5 @@ jobs:
           branch="${GITHUB_REF##*/}"
         fi
         git checkout -b "$branch" || true
-    - name: Download latest earth
-      run: "sudo /bin/sh -c 'wget https://github.com/earthly/earthly/releases/download/v0.3.11/earth-darwin-amd64 -O /usr/local/bin/earth && chmod +x /usr/local/bin/earth'"
-    - name: Earth version
-      run: earth --version
-    - name: Run build
-      run: earth +ci-macos
+    - name: Run test 
+      run: cargo test
