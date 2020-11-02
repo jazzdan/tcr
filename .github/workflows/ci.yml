@@ -51,8 +51,8 @@ jobs:
     name: publish ${{ matrix.toolchain }} / ${{ matrix.triple.target }}
     runs-on: ${{ matrix.triple.os }}
     needs:
-      - build
-      - build-macos
+      - test 
+      - test-macos
     if: github.ref == 'refs/heads/master'
     strategy:
       matrix:
