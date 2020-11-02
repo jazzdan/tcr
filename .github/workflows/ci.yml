@@ -71,6 +71,9 @@ jobs:
           ## ARMv7
           - { os: 'ubuntu-latest', target: 'armv7-unknown-linux-gnueabihf',  cross: true }
           - { os: 'ubuntu-latest', target: 'armv7-unknown-linux-musleabihf', cross: true }
+        toolchain:
+          - 1.47.0  # MSRV
+          - stable
 
     steps:
       - uses: actions/checkout@v2
