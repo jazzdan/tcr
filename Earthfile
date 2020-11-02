@@ -7,6 +7,7 @@ deps-files:
 
 deps:
     FROM +code
+    RUN rustup component add clippy --toolchain 1.47.0-x86_64-unknown-linux-gnu
     RUN cargo build --locked --release
     RUN rm -rf target/release/deps/tcr*
     SAVE ARTIFACT target target
@@ -32,11 +33,24 @@ docker:
     ENTRYPOINT ["/usr/src/tcr/tcr"]
     SAVE IMAGE tcr:latest
 
+fmt:
+    FROM +code
+    RUN rustup component add rustfmt --toolchain 1.47.0-x86_64-unknown-linux-gnu
+    RUN cargo fmt --all -- --check
+
+clippy:
+    FROM +deps
+    RUN cargo clippy --all-targets --all-features
+
 ci:
+    BUILD +fmt
+    BUILD +clippy
     BUILD +test
     BUILD +build
 
 all:
+    BUILD +fmt
+    BUILD +clippy
     BUILD +test
     BUILD +build
     BUILD +docker
