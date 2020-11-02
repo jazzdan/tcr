@@ -48,6 +48,9 @@ ci:
     BUILD +test
     BUILD +build
 
+ci-macos:
+    BUILD +test
+
 all:
     BUILD +fmt
     BUILD +clippy
