@@ -74,10 +74,10 @@ fn watch_and_run<P: AsRef<Path>>(
         cmd: cmd_from_string(config.commit_cmd).unwrap(),
     };
     let tester = &mut CmdRunner {
-        cmd: cmd_from_string(config.revert_cmd).unwrap(),
+        cmd: cmd_from_string(config.test_cmd).unwrap(),
     };
     let reverter = &mut CmdRunner {
-        cmd: cmd_from_string(config.test_cmd).unwrap(),
+        cmd: cmd_from_string(config.revert_cmd).unwrap(),
     };
 
     let root = std::env::current_dir().unwrap();
